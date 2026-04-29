@@ -174,9 +174,6 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                 case Proto::GameServerTaskBoard:
                     parseTaskBoardData(msg);
                     break;
-                case Proto::GameServerWeaponProficiencyExperience:
-                    parseWeaponProficiencyExperience(msg);
-                    break;
                 case Proto::GameServerImbuementDurations:
                     parseImbuementDurations(msg);
                     break;
