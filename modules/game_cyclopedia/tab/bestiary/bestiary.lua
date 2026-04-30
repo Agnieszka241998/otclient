@@ -119,6 +119,92 @@ function Cyclopedia.onBestiaryTrackCheckChange(widget)
     Cyclopedia.setBestiaryTrackerStatus(raceId, checked, widget.trackerData, true)
 end
 
+local function copyTrackerEntry(entry)
+    return {unpack(entry)}
+end
+
+local function setBestiaryTrackCheck(widget, checked)
+    local originalCallback = widget.onCheckChange
+    widget.onCheckChange = nil
+    widget:setChecked(checked)
+    widget.onCheckChange = originalCallback
+    widget.bestiaryTrackerState = checked
+end
+
+local function addStoredRaceId(raceId)
+    if not table.find(storedRaceIDs, raceId) then
+        table.insert(storedRaceIDs, raceId)
+    end
+end
+
+local function removeStoredRaceId(raceId)
+    for index, storedRaceId in ipairs(storedRaceIDs) do
+        if storedRaceId == raceId then
+            table.remove(storedRaceIDs, index)
+            return
+        end
+    end
+end
+
+function Cyclopedia.setBestiaryTrackerStatus(raceId, checked, trackerEntry, sendToServer)
+    raceId = tonumber(raceId)
+    if not raceId then
+        return
+    end
+
+    Cyclopedia.storedTrackerData = Cyclopedia.storedTrackerData or {}
+
+    local trackerData = {}
+    for _, entry in ipairs(Cyclopedia.storedTrackerData) do
+        if entry[1] ~= raceId then
+            table.insert(trackerData, copyTrackerEntry(entry))
+        end
+    end
+
+    if checked then
+        addStoredRaceId(raceId)
+        if trackerEntry then
+            table.insert(trackerData, copyTrackerEntry(trackerEntry))
+        end
+    else
+        removeStoredRaceId(raceId)
+    end
+
+    Cyclopedia.storedTrackerData = trackerData
+
+    if trackerMiniWindow and Cyclopedia.onParseCyclopediaTracker then
+        Cyclopedia.onParseCyclopediaTracker(0, trackerData)
+    elseif trackerMiniWindow and trackerMiniWindow.contentsPanel and #trackerData == 0 then
+        trackerMiniWindow.contentsPanel:destroyChildren()
+    end
+
+    if UI and UI.ListBase and UI.ListBase.CreatureInfo and UI.ListBase.CreatureInfo.LeftBase then
+        local trackCheck = UI.ListBase.CreatureInfo.LeftBase.TrackCheck
+        if trackCheck and tonumber(trackCheck.raceId) == raceId then
+            setBestiaryTrackCheck(trackCheck, checked)
+        end
+    end
+
+    if sendToServer ~= false then
+        g_game.sendStatusTrackerBestiary(raceId, checked)
+    end
+end
+
+function Cyclopedia.onBestiaryTrackCheckChange(widget)
+    local raceId = tonumber(widget.raceId)
+    if not raceId then
+        return
+    end
+
+    local checked = widget:isChecked()
+    if widget.bestiaryTrackerState == checked then
+        return
+    end
+
+    widget.bestiaryTrackerState = checked
+    Cyclopedia.setBestiaryTrackerStatus(raceId, checked, widget.trackerData, true)
+end
+
 function Cyclopedia.loadBestiaryOverview(name, creatures, animusMasteryPoints)
     if (name == "Result" or name == "") and #creatures > 0 then
         if #creatures == 1 then

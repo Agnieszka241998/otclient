@@ -408,10 +408,19 @@ function controllerCyclopedia:onGameEnd()
         Cyclopedia.saveTrackerFilters("bestiary")
         Cyclopedia.saveTrackerFilters("bosstiary")
     end
-
-    if Cyclopedia.clearTrackerDataForCharacterChange then
-        Cyclopedia.clearTrackerDataForCharacterChange()
+    
+    -- Save current tracker data for current character
+    if Cyclopedia.saveTrackerData then
+        if Cyclopedia.storedTrackerData then
+            Cyclopedia.saveTrackerData("bestiary", Cyclopedia.storedTrackerData)
+        end
+        if Cyclopedia.storedBosstiaryTrackerData then
+            Cyclopedia.saveTrackerData("bosstiary", Cyclopedia.storedBosstiaryTrackerData)
+        end
     end
+    
+    -- Don't clear currentCharacter here - keep it for character change detection
+    
     Keybind.delete("Windows", "Show/hide Bosstiary Tracker")
     Keybind.delete("Windows", "Show/hide Bestiary Tracker")
 end
