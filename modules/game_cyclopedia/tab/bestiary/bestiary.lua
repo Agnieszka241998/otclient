@@ -652,7 +652,64 @@ end
 
 function Cyclopedia.CreateBestiaryCreaturesItem(data)
     local raceData = g_things.getRaceData(data.id)
+function Cyclopedia.CreateBestiaryCreaturesItem(data)
+    local raceData = g_things.getRaceData(data.id)
 
+    local function verify(name)
+        if #name > 18 then
+            return name:sub(1, 15) .. "..."
+        else
+            return name
+        end
+    end
+
+    local widget = g_ui.createWidget("BestiaryCreature", UI.ListBase.CreatureList)
+    widget:setId(data.id)
+
+    local formattedName = raceData.name:gsub("(%l)(%w*)", function(first, rest)
+        return first:upper() .. rest
+    end)
+
+    widget.Name:setText(verify(formattedName))
+    widget.Sprite:setOutfit(raceData.outfit)
+    widget.Sprite:getCreature():setStaticWalking(1000)
+
+    if data.AnimusMasteryBonus > 0 then
+        widget.AnimusMastery:setTooltip("The Animus Mastery for this creature is unlocked.\nIt yields ".. data.AnimusMasteryBonus.. "% bonus experience points, plus an additional 0.1% for every 10 Animus Masteries unlocked, up to a maximum of 4%.\nYou currently benefit from ".. data.AnimusMasteryBonus.. "% bonus experience points due to having unlocked ".. animusMasteryPoints.." Animus Masteries.")
+        widget.AnimusMastery:setVisible(true)
+    else
+        widget.AnimusMastery:removeTooltip()
+        widget.AnimusMastery:setVisible(false)
+    end
+
+    if data.currentLevel >= 4 then
+        widget.Finalized:setVisible(true)
+        widget.KillsLabel:setVisible(false)
+        widget.Sprite:getCreature():setShader("")
+    else
+        widget.Finalized:setVisible(false)
+        widget.KillsLabel:setVisible(true)
+        if data.currentLevel < 1 then
+            widget.KillsLabel:setText("?")
+            widget.Sprite:getCreature():setShader("Outfit - cyclopedia-black")
+            widget.Name:setText("Unknown")
+            widget.AnimusMastery:setVisible(false)
+        else
+            widget.KillsLabel:setText(string.format("%d / 3", data.currentLevel - 1))
+            widget.Sprite:getCreature():setShader("")
+        end
+    end
+
+    function widget.ClassBase:onClick()
+        if data.currentLevel < 1 then
+            return
+        end
+
+        UI.BackPageButton:setEnabled(true)
+        g_game.requestBestiarySearch(widget:getId())
+        Cyclopedia.ShowBestiaryCreature()
+    end
+end
     local function verify(name)
         if #name > 18 then
             return name:sub(1, 15) .. "..."
