@@ -63,12 +63,131 @@ function clean()
     end
 end
 
+local saveContainerWindowPlacement
+
 function destroy(container)
     if container.window then
+        saveContainerWindowPlacement(container)
         container.window:destroy()
         container.window = nil
         container.itemsPanel = nil
     end
+end
+
+local function getContainerPlacements()
+    if type(containerSettings.containerPlacements) ~= 'table' then
+        containerSettings.containerPlacements = {}
+    end
+
+    return containerSettings.containerPlacements
+end
+
+local function sanitizeContainerPlacementPart(value)
+    local key = tostring(value or 'container'):lower()
+    key = key:gsub('[^%w]+', '_'):gsub('^_+', ''):gsub('_+$', '')
+    return key ~= '' and key or 'container'
+end
+
+local function buildContainerPlacementKey(container)
+    local keyParts = {}
+    local currentContainer = container
+
+    for _ = 1, 16 do
+        if not currentContainer then
+            break
+        end
+
+        local containerItem = currentContainer:getContainerItem()
+        if not containerItem then
+            break
+        end
+
+        local itemPosition = containerItem:getPosition()
+        local itemId = containerItem:getId() or 0
+        local parentContainer = containerItem:getParentContainer()
+        local name = sanitizeContainerPlacementPart(currentContainer:getName())
+        local slotOrIndex = currentContainer:getId() or 0
+
+        if itemPosition and itemPosition.z then
+            slotOrIndex = itemPosition.z
+        end
+
+        table.insert(keyParts, 1, string.format('%s_%d_%d', name, itemId, slotOrIndex))
+
+        if not parentContainer then
+            break
+        end
+
+        currentContainer = parentContainer
+    end
+
+    if #keyParts == 0 then
+        return nil
+    end
+
+    return table.concat(keyParts, '__')
+end
+
+saveContainerWindowPlacement = function(container)
+    local containerWindow = container.window
+    if not containerWindow then
+        return
+    end
+
+    local placementKey = buildContainerPlacementKey(container)
+    if not placementKey then
+        return
+    end
+
+    local parent = containerWindow:getParent()
+    if not parent then
+        return
+    end
+
+    local placement = {
+        parentId = parent:getId()
+    }
+
+    if parent:getClassName() == 'UIMiniWindowContainer' then
+        placement.index = parent:getChildIndex(containerWindow)
+    else
+        placement.position = pointtostring(containerWindow:getPosition())
+    end
+
+    getContainerPlacements()[placementKey] = placement
+    g_settings.setNode('containers', containerSettings)
+end
+
+local function restoreContainerWindowPlacement(container, containerWindow)
+    local placementKey = buildContainerPlacementKey(container)
+    if not placementKey then
+        return nil
+    end
+
+    local placement = getContainerPlacements()[placementKey]
+    if not placement or not placement.parentId then
+        return nil
+    end
+
+    local parent = rootWidget:recursiveGetChildById(placement.parentId)
+    if not parent or not parent:isVisible() then
+        return placement
+    end
+
+    local currentParent = containerWindow:getParent()
+
+    if parent:getClassName() == 'UIMiniWindowContainer' and placement.index then
+        if currentParent == parent then
+            parent:swapInsert(containerWindow, placement.index)
+        else
+            parent:scheduleInsert(containerWindow, placement.index)
+        end
+    elseif placement.position then
+        containerWindow:setParent(parent, true)
+        containerWindow:setPosition(topoint(placement.position))
+    end
+
+    return placement
 end
 
 function showContainersContextMenu(widget, mousePos, mouseButton)
@@ -1075,13 +1194,32 @@ function onContainerOpen(container, previousContainer)
     local cellSize = layout:getCellSize()
     local step = cellSize.height + layout:getCellSpacing()
     local numLines = math.max(layout:getNumLines(), 1)
-    local chromeHeight = container:hasPages() and 55 or 31
-    containerWindow:setContentMinimumHeight(cellSize.height)
+    local desiredContentHeight = numLines * step
+    
+    -- Calculate chrome height (header + optional footer)
+    local header = containerWindow:getChildById('miniwindowTopBar')
+    local headerHeight = header:getHeight()
+    if headerHeight <= 0 then
+        -- Attempt to get height from style if not yet rendered
+        local style = header:getStyle()
+        headerHeight = style and tonumber(style.height) or 24
+    end
+    
+    -- Final fallback to ensure it's never too small on first open
+    if headerHeight < 14 then headerHeight = 24 end
 
+    local footerHeight = container:hasPages() and 32 or 0
+    local chromeHeight = headerHeight + footerHeight
+    desiredContentHeight = desiredContentHeight + chromeHeight
+    
     local resizeBorder = containerWindow:getChildById('bottomResizeBorder')
     if resizeBorder then
-        resizeBorder:setMinimum(step + chromeHeight)
-        resizeBorder:setMaximum(numLines * step + chromeHeight)
+        local contentsPanel = containerWindow:getChildById('contentsPanel')
+        local minHeight = contentsPanel:getMarginTop() + contentsPanel:getMarginBottom() + 
+                         contentsPanel:getPaddingTop() + contentsPanel:getPaddingBottom()
+                         
+        resizeBorder:setMinimum(step + chromeHeight + minHeight)
+        resizeBorder:setMaximum(numLines * step + chromeHeight + minHeight)
     end
     -- Enables dragging only when mouse press occurs within window bounds (with tolerance margins)
     -- and not over the containerPanel child widget
@@ -1114,25 +1252,25 @@ function onContainerOpen(container, previousContainer)
         end
     end
 
+    containerWindow:setContentHeight(desiredContentHeight)
+
     if not previousContainer then
-        local panel = modules.game_interface.findContentPanelAvailable(containerWindow, cellSize.height)
+        local panel = modules.game_interface.findContentPanelAvailable(containerWindow, desiredContentHeight)
         panel:addChild(containerWindow)
     end
 
-    if not previousContainer or previousContainer:getCapacity() >= container:getCapacity() then
-        -- Always set the content height based on the current container's content, with a minimum of one row
-        local minRows = 1
-        if modules.client_options.getOption('openMaximized') then
-            local numLines = math.max(layout:getNumLines(), minRows)
-            containerWindow:setContentHeight(numLines * step + chromeHeight)
-        else
-            local numColumns = math.max(layout:getNumColumns(), 1)
-            local filledLines = math.max(math.ceil(container:getItemsCount() / numColumns), minRows)
-            containerWindow:setContentHeight(filledLines * step + chromeHeight)
-        end
+    containerWindow:setup()
+
+    if not previousContainer then
+        restoreContainerWindowPlacement(container, containerWindow)
     end
 
-    containerWindow:setup()
+    if containerWindow:getHeight() < desiredContentHeight then
+        containerWindow:setHeight(desiredContentHeight)
+        if containerWindow:getSettings('height') and containerWindow:getSettings('height') < desiredContentHeight then
+            containerWindow:setSettings({ height = desiredContentHeight, minimized = false })
+        end
+    end
     
     -- Apply current sorting mode if one is active and manual sort mode is disabled
     local currentSortMode = containerSettings and containerSettings['currentSortMode']
