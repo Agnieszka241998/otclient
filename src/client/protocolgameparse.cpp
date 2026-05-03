@@ -3457,8 +3457,10 @@ void ProtocolGame::parseBestiaryMonsterData(const InputMessagePtr& msg)
             data.combat[elementId] = elementValue;
         }
 
-        msg->getU16();
-        data.location = msg->getString();
+        const uint16_t locationCount = msg->getU16();
+        if (locationCount > 0 && msg->getUnreadSize() >= 2) {
+            data.location = msg->getString();
+        }
     }
     if (g_game.getClientVersion() < 1410) {
         if (data.currentLevel > 3) {
