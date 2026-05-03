@@ -46,6 +46,7 @@ MiscItems < UIWidget
     anchors.fill: parent
     phantom: true
     virtual: true
+
 CharacterTitleListRow < UIWidget
   height: 20
   focusable: true

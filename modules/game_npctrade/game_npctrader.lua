@@ -33,6 +33,9 @@ function controllerNpcTrader:onGameStart()
         onCloseNpcTrade = function()
             self:onCloseNpcTrade()
         end,
+        onNpcChatWindowClose = function()
+            self:onCloseNpcTrade()
+        end,
         onTalk = onNpcTalk
     })
 end
