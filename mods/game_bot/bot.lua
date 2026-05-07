@@ -522,6 +522,7 @@ function initCallbacks()
     onCloseChannel = botCloseChannel,
     onChannelEvent = botChannelEvent,
     onImbuementWindow = botImbuementWindow,
+    onImbuementItem = botImbuementItem,
     onModalDialog = botModalDialog,
     onAttackingCreatureChange = botAttackingCreatureChange,
     onAddItem = botContainerAddItem,
@@ -588,6 +589,7 @@ function terminateCallbacks()
     onCloseChannel = botCloseChannel,
     onChannelEvent = botChannelEvent,
     onImbuementWindow = botImbuementWindow,
+    onImbuementItem = botImbuementItem,
     onModalDialog = botModalDialog,
     onAttackingCreatureChange = botAttackingCreatureChange,
     onEditText = botGameEditText,
@@ -777,6 +779,10 @@ end
 function botImbuementWindow(itemId, slots, activeSlots, imbuements, needItems)
   if botExecutor == nil then return false end
   safeBotCall(function() botExecutor.callbacks.onImbuementWindow(itemId, slots, activeSlots, imbuements, needItems) end)
+end
+
+function botImbuementItem(itemId, tier, slots, activeSlots, imbuements, needItems)
+  botImbuementWindow(itemId, slots, activeSlots, imbuements, needItems)
 end
 
 function botModalDialog(id, title, message, buttons, enterButton, escapeButton, choices, priority)

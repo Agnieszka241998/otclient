@@ -93,6 +93,8 @@ function onOpenNpcTrade(items, currencyId, currencyName)
         controllerNpcTrader:filterTradeList(controllerNpcTrader.searchText or "")
         controllerNpcTrader:refreshPlayerGoods()
     end
+
+    controllerNpcTrader:syncBotCompatibility()
 end
 
 function controllerNpcTrader:setTradeMode(mode)

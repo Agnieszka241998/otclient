@@ -6,6 +6,9 @@
 controllerNpcTrader.BUY = 1
 controllerNpcTrader.SELL = 2
 
+BUY = controllerNpcTrader.BUY
+SELL = controllerNpcTrader.SELL
+
 -- ==============================================================================================
 -- UI LAYOUT CONSTANTS
 -- ==============================================================================================

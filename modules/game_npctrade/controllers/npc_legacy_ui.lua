@@ -533,11 +533,71 @@ function getMaxAmount()
 end
 
 function controllerNpcTrader:sellAllLegacy()
-    for itemid, _ in pairs(playerItems) do
-        local item = Item.create(itemid)
-        local amount = getSellQuantity(item)
-        if amount > 0 then
-            g_game.sellItem(item, amount, ignoreEquipped:isChecked())
+    sellAll()
+end
+
+local function buildSellIgnoreMap(exceptions)
+    local ignored = {}
+
+    if type(exceptions) ~= 'table' then
+        return ignored
+    end
+
+    for _, value in ipairs(exceptions) do
+        local itemId = tonumber(value)
+        if itemId then
+            ignored[itemId] = true
         end
     end
+
+    return ignored
+end
+
+local function dispatchSellQueue(queue, withDelay, ignoreEquippedState)
+    if withDelay then
+        for index, entry in ipairs(queue) do
+            scheduleEvent(function()
+                g_game.sellItem(entry.item, entry.amount, ignoreEquippedState)
+            end, (index - 1) * 250)
+        end
+        return
+    end
+
+    for _, entry in ipairs(queue) do
+        g_game.sellItem(entry.item, entry.amount, ignoreEquippedState)
+    end
+end
+
+function sellAll(wait, exceptions)
+    local ignored = buildSellIgnoreMap(exceptions)
+    local queue = {}
+
+    if g_game.getFeature(GameNpcWindowRedesign) then
+        for _, entry in ipairs(controllerNpcTrader.sellItems or {}) do
+            local item = entry.ptr
+            local itemId = item and item:getId()
+            if itemId and not ignored[itemId] then
+                local amount = controllerNpcTrader:getSellQuantity(item)
+                if amount > 0 then
+                    table.insert(queue, { item = item, amount = amount })
+                end
+            end
+        end
+
+        dispatchSellQueue(queue, wait, controllerNpcTrader.ignoreEquipped ~= false)
+        return #queue > 0
+    end
+
+    for itemid, _ in pairs(playerItems) do
+        if not ignored[itemid] then
+            local item = Item.create(itemid)
+            local amount = getSellQuantity(item)
+            if amount > 0 then
+                table.insert(queue, { item = item, amount = amount })
+            end
+        end
+    end
+
+    dispatchSellQueue(queue, wait, ignoreEquipped:isChecked())
+    return #queue > 0
 end

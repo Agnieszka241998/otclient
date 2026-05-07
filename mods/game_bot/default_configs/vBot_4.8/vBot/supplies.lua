@@ -418,7 +418,7 @@ Supplies.hasEnough = function()
   for id, values in pairs(data) do
     id = tonumber(id)
     local minimum = values.min
-    local current = player:getItemsCount(id) or 0
+    local current = itemAmount(id) or 0
 
     if current < minimum then
       return {id=id, amount=current}

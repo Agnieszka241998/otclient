@@ -5,11 +5,31 @@ controllerNpcTrader.outfit = nil
 controllerNpcTrader.buttons = {}
 controllerNpcTrader.isTradeOpen = false
 
+function controllerNpcTrader:syncBotCompatibility()
+    local module = modules and modules.game_npctrade
+    if not module then
+        return
+    end
+
+    module.BUY = controllerNpcTrader.BUY
+    module.SELL = controllerNpcTrader.SELL
+    module.isTradeOpen = controllerNpcTrader.isTradeOpen == true
+    module.npcWindow = controllerNpcTrader.isTradeOpen and controllerNpcTrader.ui or nil
+    module.buyItems = controllerNpcTrader.buyItems or {}
+    module.sellItems = controllerNpcTrader.sellItems or {}
+    module.tradeItems = {
+        [controllerNpcTrader.BUY] = module.buyItems,
+        [controllerNpcTrader.SELL] = module.sellItems
+    }
+end
+
 function controllerNpcTrader:onInit()
 
 end
 
 function controllerNpcTrader:onGameStart()
+    self:syncBotCompatibility()
+
     if not g_game.getFeature(GameNpcWindowRedesign) then
         self:legacy_init()
     end
@@ -73,5 +93,7 @@ function controllerNpcTrader:onCloseNpcTrade()
     if controllerNpcTrader.ui and controllerNpcTrader.ui:isVisible() then
         controllerNpcTrader:unloadHtml()
     end
+
+    controllerNpcTrader:syncBotCompatibility()
 end
 

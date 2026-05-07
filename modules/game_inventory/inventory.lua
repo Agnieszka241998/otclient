@@ -229,13 +229,6 @@ local function inventoryEvent(player, slot, item, oldItem)
     ItemsDatabase.setTier(slotPanel.item, item)
 
     if slot == InventorySlotLeft then
-        if modules.game_proficiency and modules.game_proficiency.updateTopBarProficiency then
-            -- Request proficiency data for new weapon
-            if item and g_game.sendWeaponProficiencyAction then
-                g_game.sendWeaponProficiencyAction(0, item:getId())
-            end
-            modules.game_proficiency.updateTopBarProficiency()
-        end
         updateMonkMirrorItem(item)
     end
 end
@@ -638,16 +631,33 @@ end
 function onBlessingsChange(blessings, blessVisualState)
     toggleAdventurerStyle(blessings == 1)
     local blessedButton = getInventoryUi().blessings
---[[     local tooltip = 'You are protected by the following blessings:'
-        tooltip = tooltip .. '\nTwist of Fate'
-        tooltip = tooltip .. '\nWisdom of Solitude'
-        tooltip = tooltip .. '\nSpark of the Phoenix'
-        tooltip = tooltip .. '\nFire of the Suns'
-        tooltip = tooltip .. '\nSpiritual Shielding'
-        tooltip = tooltip .. '\nEmbrace of Tibia'
-        tooltip = tooltip .. '\nHeart of the Mountain'
-        tooltip = tooltip .. '\nBlood of the Mountain'
-        blessedButton:setTooltip(tooltip) ]]
+
+        local tooltip = 'You are protected by the following blessings:'
+        if Bit.hasBit(blessings, bit.lshift(1, 1)) then
+          tooltip = tooltip .. '\n-Twist of Fate'
+        end
+        if Bit.hasBit(blessings, bit.lshift(1, 2)) then
+          tooltip = tooltip .. '\n-Wisdom of Solitude'
+        end
+        if Bit.hasBit(blessings, bit.lshift(1, 3)) then
+          tooltip = tooltip .. '\n-Spark of the Phoenix'
+        end
+        if Bit.hasBit(blessings, bit.lshift(1, 4)) then
+          tooltip = tooltip .. '\n-Fire of the Suns'
+        end
+        if Bit.hasBit(blessings, bit.lshift(1, 5)) then
+          tooltip = tooltip .. '\n-Spiritual Shielding'
+        end
+        if Bit.hasBit(blessings, bit.lshift(1, 6)) then
+          tooltip = tooltip .. '\n-Embrace of Tibia'
+        end
+        if Bit.hasBit(blessings, bit.lshift(1, 7)) then
+          tooltip = tooltip .. '\n-Heart of the Mountain'
+        end
+        if Bit.hasBit(blessings, bit.lshift(1, 8)) then
+          tooltip = tooltip .. '\n-Blood of the Mountain'
+        end
+        blessedButton:setTooltip(tooltip)
     if blessVisualState == 1 then
         blessedButton:setImageSource('/images/inventory/button_blessings_grey')
     elseif blessVisualState == 2 then

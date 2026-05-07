@@ -139,7 +139,8 @@ function executeBot(config, storage, tabs, msgCallback, saveConfigCallback, relo
     openUrl = g_platform.openUrl,
     openDir = g_platform.openDir,
   }
-
+  context.g_clock = g_clock
+	
   context.Item = Item
   context.Creature = Creature
   context.ThingType = ThingType

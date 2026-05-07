@@ -3,11 +3,11 @@
 
 -- updater
 Services = {
-    --updater = "http://localhost/api/updater.php", --./updater
-    --status = "http://localhost/login.php", --./client_entergame | ./client_topmenu
-    --websites = "http://localhost/?subtopic=accountmanagement", --./client_entergame "Forgot password and/or email"
-    --createAccount = "http://localhost/clientcreateaccount.php", --./client_entergame -- createAccount.lua
-    --getCoinsUrl = "http://localhost/?subtopic=shop&step=terms", --./game_market
+--updater = "http://localhost/api/updater.php", --./updater
+status = "https://www.gunzodus.net/game/login/1522?nservice.php", --./client_entergame | ./client_topmenu
+websites = "http://gunzodus.net/?subtopic=accountmanagement", --./client_entergame "Forgot password and/or email"
+createAccount = "http://gunzodus.net/clientcreateaccount.php", --./client_entergame -- createAccount.lua
+getCoinsUrl = "http://gunzodus.net/?subtopic=shop&step=terms", --./game_market
 }
 
 --- Enables or disables the entire server configuration block.
@@ -76,11 +76,6 @@ if ENABLE_SERVERS then
         -- @field protocol Protocol identifier used by the server
         -- @field httpLogin Indicates if the server allows HTTP login
         --
-        ["ip.net"] = {
-            port = 7171,
-            protocol = 860,
-            httpLogin = false
-        }
     }
 end
 

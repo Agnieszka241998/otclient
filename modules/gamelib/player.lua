@@ -691,6 +691,11 @@ function Player:getItems(itemId, subType)
 end
 
 function Player:getItemsCount(itemId)
+    local getInventoryCount = self.getInventoryCount
+    if getInventoryCount then
+        return getInventoryCount(self, itemId, 0)
+    end
+
     local items, count = self:getItems(itemId), 0
     for i = 1, #items do
         count = count + items[i]:getCount()
