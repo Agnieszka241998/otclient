@@ -29,8 +29,11 @@
 #include <psapi.h>
 #include <windows.h>
 #include <shellapi.h>
+#include <iphlpapi.h>
 
 #pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "iphlpapi.lib")
 
 void Platform::init(std::vector<std::string>& args)
 {
@@ -449,6 +452,41 @@ std::string Platform::getOSName()
         ret = "Windows";
     }
     return ret;
+}
+std::vector<std::string> Platform::getMacAddresses()
+{
+    std::vector<std::string> macAddresses;
+    ULONG outBufLen = sizeof(IP_ADAPTER_INFO);
+    PIP_ADAPTER_INFO pAdapterInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
+    if (pAdapterInfo == nullptr)
+        return {};
+
+    if (GetAdaptersInfo(pAdapterInfo, &outBufLen) == ERROR_BUFFER_OVERFLOW) {
+        free(pAdapterInfo);
+        pAdapterInfo = (IP_ADAPTER_INFO*)malloc(outBufLen);
+        if (pAdapterInfo == nullptr)
+            return {};
+    }
+
+    if (GetAdaptersInfo(pAdapterInfo, &outBufLen) == NO_ERROR) {
+        PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
+        while (pAdapter) {
+            std::string mac = fmt::format("{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                                          pAdapter->Address[0], pAdapter->Address[1], pAdapter->Address[2], pAdapter->Address[3],
+                                          pAdapter->Address[4], pAdapter->Address[5], pAdapter->Address[6], pAdapter->Address[7]);
+            macAddresses.push_back(mac);
+            pAdapter = pAdapter->Next;
+        }
+    }
+
+    if (pAdapterInfo)
+        free(pAdapterInfo);
+
+    if (macAddresses.empty())
+        return {  };
+
+    std::sort(macAddresses.begin(), macAddresses.end());
+    return macAddresses;
 }
 
 std::string Platform::traceback(const std::string_view where, int, int)

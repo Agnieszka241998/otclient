@@ -5,6 +5,7 @@ local lastTurn = 0
 local nextWalkDir = nil
 local lastWalkDir = nil
 local lastCancelWalkTime = 0
+local wsadWalking = false
 
 
 local keys = {
@@ -27,6 +28,24 @@ local turnKeys = {
     { "Ctrl+Right", East },
     { "Ctrl+Down",  South },
     { "Ctrl+Left",  West },
+}
+
+local wsadKeys = {
+    { "W", North },
+    { "D", East },
+    { "S", South },
+    { "A", West },
+    { "E", NorthEast },
+    { "Q", NorthWest },
+    { "C", SouthEast },
+    { "Z", SouthWest },
+}
+
+local wsadTurnKeys = {
+    { "Ctrl+W", North },
+    { "Ctrl+D", East },
+    { "Ctrl+S", South },
+    { "Ctrl+A", West },
 }
 
 WalkController = Controller:new()
@@ -205,12 +224,69 @@ local function bindKeys()
     modules.game_interface.getRootPanel():setAutoRepeatDelay(200)
 
     for _, keyDir in ipairs(keys) do bindWalkKey(keyDir[1], keyDir[2]) end
-    for _, keyDir in ipairs(turnKeys) do bindTurnKey(keyDir[1], keyDir[2]) end
+    bindTurnKeys()
 end
 
 local function unbindKeys()
     for _, keyDir in ipairs(keys) do unbindWalkKey(keyDir[1]) end
-    for _, keyDir in ipairs(turnKeys) do unbindTurnKey(keyDir[1]) end
+    unbindTurnKeys()
+end
+
+function bindTurnKeys()
+    for _, keyDir in ipairs(turnKeys) do
+        bindTurnKey(keyDir[1], keyDir[2])
+    end
+end
+
+function unbindTurnKeys()
+    for _, keyDir in ipairs(turnKeys) do
+        unbindTurnKey(keyDir[1])
+    end
+end
+
+function enableWSAD()
+    if wsadWalking then
+        return
+    end
+
+    wsadWalking = true
+    for _, keyDir in ipairs(wsadKeys) do
+        bindWalkKey(keyDir[1], keyDir[2])
+    end
+    for _, keyDir in ipairs(wsadTurnKeys) do
+        bindTurnKey(keyDir[1], keyDir[2])
+    end
+end
+
+function disableWSAD()
+    if not wsadWalking then
+        return
+    end
+
+    wsadWalking = false
+    for _, keyDir in ipairs(wsadKeys) do
+        unbindWalkKey(keyDir[1])
+    end
+    for _, keyDir in ipairs(wsadTurnKeys) do
+        unbindTurnKey(keyDir[1])
+    end
+end
+
+local function exposeLegacyWalkingApi()
+    modules.game_walking = modules.game_walk
+
+    local walkingModule = modules.game_walking
+    walkingModule.bindKeys = bindKeys
+    walkingModule.unbindKeys = unbindKeys
+    walkingModule.bindTurnKeys = bindTurnKeys
+    walkingModule.unbindTurnKeys = unbindTurnKeys
+    walkingModule.enableWSAD = enableWSAD
+    walkingModule.disableWSAD = disableWSAD
+    walkingModule.bindWalkKey = bindWalkKey
+    walkingModule.unbindWalkKey = unbindWalkKey
+    walkingModule.bindTurnKey = bindTurnKey
+    walkingModule.unbindTurnKey = unbindTurnKey
+    walkingModule.smartWalk = smartWalk
 end
 
 --- Handles player teleportation events.

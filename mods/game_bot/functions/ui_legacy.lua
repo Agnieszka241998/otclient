@@ -16,6 +16,9 @@ context.setupUI = function(otml, parent)
   end
   local widget = g_ui.loadUIFromString(otml, parent)
   widget.botWidget = true
+  if type(context._attachLegacyCheckCompat) == "function" then
+    context._attachLegacyCheckCompat(widget, true)
+  end
   return widget
 end
 
@@ -61,6 +64,9 @@ context.addSwitch = function(id, text, onClickCallback, parent)
   switch:setId(id)
   switch:setText(text)
   switch.onClick = onClickCallback
+  if type(context._attachLegacyCheckCompat) == "function" then
+    context._attachLegacyCheckCompat(switch, true)
+  end
   return switch
 end
 

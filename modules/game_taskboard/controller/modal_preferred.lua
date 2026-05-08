@@ -64,7 +64,7 @@ end
 function TaskBoardController:showPreferred()
     if self.preferredModal then return end
 
-    self.preferredModal = self:openModal('template/html/modal_preferred.html')
+    self.preferredModal = self:openModalHtml('template/html/modal_preferred.html')
     addEvent(function()
         if not self.preferredModal or not self.preferredModal.ui then return end
         self:ensurePreferredMonsterScrollBound()
@@ -89,7 +89,7 @@ function TaskBoardController:hidePreferred()
     end
 
     if self.preferredModal then
-        self:closeModal(self.preferredModal)
+        self:closeModalHtml(self.preferredModal)
         self.preferredModal = nil
     end
 

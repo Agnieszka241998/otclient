@@ -96,6 +96,8 @@ Canary: void ProtocolGame::sendTibiaTime(int32_t time)
 end
 
 function mapController:onInit()
+    minimapWidget = self.ui.minimapBorder.minimap
+    modules.game_minimap.minimapWidget = minimapWidget
     self.ui.minimapBorder.minimap:getChildById('floorUpButton'):hide()
     self.ui.minimapBorder.minimap:getChildById('floorDownButton'):hide()
     self.ui.minimapBorder.minimap:getChildById('zoomInButton'):hide()
@@ -145,6 +147,8 @@ function mapController:onGameEnd()
 end
 
 function mapController:onTerminate()
+    modules.game_minimap.minimapWidget = nil
+    minimapWidget = nil
     if iconTopMenu then
         iconTopMenu:destroy()
         iconTopMenu = nil

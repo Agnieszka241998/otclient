@@ -81,6 +81,7 @@ function init()
 
     bottomSplitter = gameRootPanel:getChildById('bottomSplitter')
     gameMapPanel = gameRootPanel:getChildById('gameMapPanel')
+    modules.game_interface.gameMapPanel = gameMapPanel
     gameMainRightPanel = gameRootPanel:getChildById('gameMainRightPanel')
     gameRightPanel = gameRootPanel:getChildById('gameRightPanel')
     gameRightExtraPanel = gameRootPanel:getChildById('gameRightExtraPanel')
@@ -210,6 +211,7 @@ function bindKeys()
 end
 
 function terminate()
+    modules.game_interface.gameMapPanel = nil
     StatsBar.terminate()
 
     hide()
