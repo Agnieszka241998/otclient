@@ -405,6 +405,7 @@ void Client::registerLuaFunctions()
     g_lua.bindSingletonFunction("g_game", "sendGmTeleport", &Game::sendGmTeleport, &g_game);
     g_lua.bindSingletonFunction("g_game", "inspectionNormalObject", &Game::inspectionNormalObject, &g_game);
     g_lua.bindSingletonFunction("g_game", "inspectionObject", &Game::inspectionObject, &g_game);
+    g_lua.bindSingletonFunction("g_game", "inspectCharacter", &Game::inspectCharacter, &g_game);
     g_lua.bindSingletonFunction("g_game", "requestBestiary", &Game::requestBestiary, &g_game);
     g_lua.bindSingletonFunction("g_game", "requestBestiaryOverview", &Game::requestBestiaryOverview, &g_game);
     g_lua.bindSingletonFunction("g_game", "requestBestiarySearch", &Game::requestBestiarySearch, &g_game);
@@ -437,6 +438,7 @@ void Client::registerLuaFunctions()
     g_lua.bindSingletonFunction("g_gameConfig", "isDrawingInformationByWidget", &GameConfig::isDrawingInformationByWidget, &g_gameConfig);
     g_lua.bindSingletonFunction("g_gameConfig", "isAdjustCreatureInformationBasedCropSize", &GameConfig::isAdjustCreatureInformationBasedCropSize, &g_gameConfig);
     g_lua.bindSingletonFunction("g_gameConfig", "isUseCropSizeForUIDraw", &GameConfig::isUseCropSizeForUIDraw, &g_gameConfig);
+    g_lua.bindSingletonFunction("g_gameConfig", "isExtendedViewUI", &GameConfig::isExtendedViewUI, &g_gameConfig);
 
     g_lua.bindSingletonFunction("g_gameConfig", "getShieldBlinkTicks", &GameConfig::getShieldBlinkTicks, &g_gameConfig);
     g_lua.bindSingletonFunction("g_gameConfig", "getCreatureNameFontName", &GameConfig::getCreatureNameFontName, &g_gameConfig);
@@ -554,6 +556,8 @@ void Client::registerLuaFunctions()
     g_lua.bindClassMemberFunction<Thing>("isLyingCorpse", &Thing::isLyingCorpse);
     g_lua.bindClassMemberFunction<Thing>("getDefaultAction", &Thing::getDefaultAction);
     g_lua.bindClassMemberFunction<Thing>("getClassification", &Thing::getClassification);
+    g_lua.bindClassMemberFunction<Thing>("getCyclopediaType", &Thing::getCyclopediaType);
+    g_lua.bindClassMemberFunction<Thing>("getProficiencyId", &Thing::getProficiencyId);
     g_lua.bindClassMemberFunction<Thing>("setHighlight", &Thing::lua_setHighlight);
     g_lua.bindClassMemberFunction<Thing>("isHighlighted", &Thing::isHighlighted);
     g_lua.bindClassMemberFunction<Thing>("getExactSize", &Thing::getExactSize);
@@ -787,6 +791,8 @@ void Client::registerLuaFunctions()
     g_lua.bindClassMemberFunction<ThingType>("hasSkillWheelGem", &ThingType::hasSkillWheelGem);
     g_lua.bindClassMemberFunction<ThingType>("getSkillWheelGemQualityId", &ThingType::getSkillWheelGemQualityId);
     g_lua.bindClassMemberFunction<ThingType>("getSkillWheelGemVocationId", &ThingType::getSkillWheelGemVocationId);
+    g_lua.bindClassMemberFunction<ThingType>("getCyclopediaType", &ThingType::getCyclopediaType);
+    g_lua.bindClassMemberFunction<ThingType>("getProficiencyId", &ThingType::getProficiencyId);
 #ifdef FRAMEWORK_EDITOR
     g_lua.bindClassMemberFunction<ThingType>("exportImage", &ThingType::exportImage);
 #endif
@@ -819,6 +825,8 @@ void Client::registerLuaFunctions()
     g_lua.bindClassMemberFunction<Item>("hasClockExpire", &Item::hasClockExpire);
     g_lua.bindClassMemberFunction<Item>("hasExpire", &Item::hasExpire);
     g_lua.bindClassMemberFunction<Item>("hasExpireStop", &Item::hasExpireStop);
+    g_lua.bindClassMemberFunction<Item>("getCyclopediaType", &Item::getCyclopediaType);
+    g_lua.bindClassMemberFunction<Item>("getProficiencyId", &Item::getProficiencyId);
     g_lua.bindClassMemberFunction<Item>("isDualWield", &Item::isDualWield);
 #ifdef FRAMEWORK_EDITOR
     g_lua.bindClassMemberFunction<Item>("getName", &Item::getName);
@@ -1079,6 +1087,9 @@ void Client::registerLuaFunctions()
     g_lua.bindClassMemberFunction<UIItem>("setItem", &UIItem::setItem);
     g_lua.bindClassMemberFunction<UIItem>("setVirtual", &UIItem::setVirtual);
     g_lua.bindClassMemberFunction<UIItem>("setShowCount", &UIItem::setShowCount);
+    g_lua.bindClassMemberFunction<UIItem>("setShowDuration", &UIItem::setShowDuration);
+    g_lua.bindClassMemberFunction<UIItem>("setShowCharges", &UIItem::setShowCharges);
+    g_lua.bindClassMemberFunction<UIItem>("setDisplayCount", &UIItem::setDisplayCount);
     g_lua.bindClassMemberFunction<UIItem>("clearItem", &UIItem::clearItem);
     g_lua.bindClassMemberFunction<UIItem>("getItemId", &UIItem::getItemId);
     g_lua.bindClassMemberFunction<UIItem>("getItemCount", &UIItem::getItemCount);
@@ -1158,7 +1169,7 @@ void Client::registerLuaFunctions()
     g_lua.bindClassMemberFunction<UIMap>("setLimitVisibleDimension", &UIMap::setLimitVisibleDimension);
     g_lua.bindClassMemberFunction<UIMap>("setDrawManaBar", &UIMap::setDrawManaBar);
     g_lua.bindClassMemberFunction<UIMap>("setKeepAspectRatio", &UIMap::setKeepAspectRatio);
-    g_lua.bindClassMemberFunction<UIMap>("setShader", &UIMap::setShader);
+    g_lua.bindClassMemberFunction<UIMap>("setShader", static_cast<void (UIMap::*)(std::string_view, float, float)>(&UIMap::setShader));
     g_lua.bindClassMemberFunction<UIMap>("getShader", &UIMap::getShader);
     g_lua.bindClassMemberFunction<UIMap>("getNextShader", &UIMap::getNextShader);
     g_lua.bindClassMemberFunction<UIMap>("isSwitchingShader", &UIMap::isSwitchingShader);
