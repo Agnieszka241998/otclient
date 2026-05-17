@@ -1893,7 +1893,7 @@ void Game::selectImbuementItem(const uint16_t itemId, const Position& pos, const
     if (!canPerformGameAction())
         return;
 
-    m_protocolGame->sendImbuementWindowAction(1, itemId, pos, stackpos);
+    m_protocolGame->sendImbuementWindowAction(Otc::IMBUEMENT_WINDOW_SELECT_ITEM, itemId, pos, stackpos);
 }
 
 void Game::selectImbuementScroll()
@@ -1901,7 +1901,7 @@ void Game::selectImbuementScroll()
     if (!canPerformGameAction())
         return;
 
-    m_protocolGame->sendImbuementWindowAction(2);
+    m_protocolGame->sendImbuementWindowAction(Otc::IMBUEMENT_WINDOW_SCROLL);
 }
 
 void Game::imbuementDurations(const bool isOpen)
