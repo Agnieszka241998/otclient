@@ -190,10 +190,6 @@ message AppearanceFlags {
 	optional AppearanceFlagTransparencyLevel transparencylevel = 72;
 }
 
-message AppearanceFlagProficiency {
-  optional uint32 id = 1;
-}
-
 message AppearanceFlagUpgradeClassification {
 	optional uint32 upgrade_classification = 1;
 }
@@ -287,6 +283,10 @@ message SpecialMeaningAppearanceIds {
 	optional uint32 tibia_coin_id = 4;
 	optional uint32 stamped_letter_id = 5;
 	optional uint32 supply_stash_id = 6;
+}
+
+message AppearanceFlagProficiency {
+  optional uint32 proficiency_id = 1;
 }
 
 enum FIXED_FRAME_GROUP {
