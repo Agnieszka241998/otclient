@@ -159,8 +159,6 @@ public:
     void sendImbuementDurations(bool isOpen = false);
     void sendStartOfflineTraining(const uint8_t skillType);
     void sendSoulSealsAction(const uint16_t raceId);
-    void sendWeaponProficiencyAction(uint8_t actionType, uint16_t itemId = 0);
-    void sendWeaponProficiencyApply(uint16_t itemId, const std::vector<std::pair<uint8_t, uint8_t>>& perks);
     // Cyclopedia
     void sendRequestBestiary();
     void sendRequestBestiaryOverview(std::string_view catName, bool search = false, std::vector<uint16_t> raceIds = {});
