@@ -1,5 +1,9 @@
 local musicFilename = 'sounds/startup'
 local musicChannel = nil
+
+modules.client = modules.client or {}
+modules.client.g_platform = g_platform
+
 if g_sounds then
     musicChannel = g_sounds.getChannel(SoundChannels.Music)
 end

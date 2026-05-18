@@ -1,0 +1,9 @@
+Module
+  name: "ral_boot"
+  description: "Restart + autologin bootstrap (no deps)"
+  author: "You"
+  website: ""
+  sandboxed: false
+  autoload: true
+  scripts:
+    - "ral_boot.lua"

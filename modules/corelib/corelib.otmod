@@ -32,8 +32,8 @@ Module
     dofile 'json'
     dofile 'http'
     dofile 'objectpool'
+    dofile 'exports'
 
     Keybind.init()
-    initPlatformKeyDescs()
-
+  
   @onUnload: Keybind.terminate()

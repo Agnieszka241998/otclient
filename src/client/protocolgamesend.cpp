@@ -29,10 +29,6 @@
 #include "thingtype.h"
 #include "framework/util/crypt.h"
 
-#ifndef USE_PRECOMPILED_HEADERS
-#include <algorithm>
-#endif
-
 void ProtocolGame::onSend() {}
 void ProtocolGame::sendExtendedOpcode(const uint8_t opcode, const std::string& buffer)
 {
@@ -302,6 +298,18 @@ void ProtocolGame::sendGmTeleport(const Position& pos)
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientGmTeleport);
     addPosition(msg, pos);
+    send(msg);
+}
+
+void ProtocolGame::sendStartOfflineTraining(const uint8_t skillType)
+{
+    if (std::cmp_greater(skillType, static_cast<uint8_t>(Otc::Fishing))) {
+        return;
+    }
+
+    const auto& msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientStartOfflineTraining);
+    msg->addU8(skillType);
     send(msg);
 }
 
@@ -749,6 +757,18 @@ void ProtocolGame::sendExcludeFromOwnChannel(const std::string_view name)
     send(msg);
 }
 
+void ProtocolGame::sendSoulSealsAction(const uint16_t raceId)
+{
+    if (std::cmp_equal(raceId, 0)) {
+        return;
+    }
+
+    const auto& msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientSoulSealsAction);
+    msg->addU16(raceId);
+    send(msg);
+}
+
 void ProtocolGame::sendCancelAttackAndFollow()
 {
     const auto& msg = std::make_shared<OutputMessage>();
@@ -771,23 +791,18 @@ void ProtocolGame::sendRequestBless()
     send(msg);
 }
 
-void ProtocolGame::sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, const bool autoTrackNewQuests, const bool autoUntrackCompletedQuests, const uint8_t extra)
+void ProtocolGame::sendRequestTrackerQuestLog(const std::map<uint16_t, std::string>& quests)
 {
     const auto msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientRequestTrackerQuestLog);
-    const auto missionCount = std::min(missionIds.size(), static_cast<size_t>(255));
-    msg->addU8(static_cast<uint8_t>(missionCount));
-
-    for (size_t i = 0; i < missionCount; ++i) {
-        msg->addU16(missionIds[i]);
+    msg->addU8(static_cast<uint8_t>(quests.size()));
+    for (const auto& quest : quests) {
+        msg->addU16(quest.first);
     }
-
-    if (g_game.getClientVersion() >= 1410) {
-        msg->addU8(autoTrackNewQuests ? 1 : 0);
-        msg->addU8(autoUntrackCompletedQuests ? 1 : 0);
-        msg->addU8(extra);
+    if (g_game.getClientVersion() >= 1511) {
+        msg->addU8(0); // TO-DO automaticallyTrackNewQuests
+        msg->addU8(0); // TO-DO automaticallyUntrackCompletedQuests
     }
-
     send(msg);
 }
 
@@ -1136,6 +1151,15 @@ void ProtocolGame::sendBuyCharmRune(const uint8_t runeId, const uint8_t action, 
     send(msg);
 }
 
+void ProtocolGame::sendFriendSystemAction(const uint8_t state, const uint8_t titleId)
+{
+    const auto& msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientFriendSystemAction);
+    msg->addU8(state);
+    msg->addU8(titleId);
+    send(msg);
+}
+
 void ProtocolGame::sendCyclopediaRequestCharacterInfo(const uint32_t playerId, const Otc::CyclopediaCharacterInfoType_t characterInfoType, const uint16_t entriesPerPage, const uint16_t page)
 {
     const auto& msg = std::make_shared<OutputMessage>();
@@ -1187,6 +1211,8 @@ void ProtocolGame::sendCyclopediaHouseAuction(const Otc::CyclopediaHouseAuctionT
         case Otc::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER:
             msg->addU32(houseId);
             break;
+        default:
+            return;
     }
 
     send(msg);
@@ -1550,6 +1576,21 @@ void ProtocolGame::sendCloseImbuingWindow()
     send(msg);
 }
 
+void ProtocolGame::sendImbuementWindowAction(const uint8_t type, const uint16_t itemId, const Position& pos, const uint8_t stackpos)
+{
+    const auto& msg = std::make_shared<OutputMessage>();
+    msg->addU8(0xB2);  // same opcode as parseImbuementWindow on server
+    msg->addU8(type);  // 1 = SELECT_ITEM, 2 = SCROLL
+
+    if (type == 1) {  // SELECT_ITEM
+        addPosition(msg, pos);
+        msg->addU16(itemId);
+        msg->addU8(stackpos);
+    }
+
+    send(msg);
+}
+
 void ProtocolGame::sendOpenRewardWall()
 {
     const auto& msg = std::make_shared<OutputMessage>();
@@ -1616,6 +1657,47 @@ void ProtocolGame::sendHighscoreInfo(const uint8_t action, const uint8_t categor
     msg->addU8(battlEye);
     msg->addU16(page);
     msg->addU8(totalPages);
+    send(msg);
+}
+
+void ProtocolGame::sendTaskBoardAction(const uint8_t option, const uint16_t value, const uint16_t extraValue)
+{
+    const auto& msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientTaskBoardAction);
+    msg->addU8(option);
+    switch (option) {
+        case Otc::TASK_BOARD_OPTION_BOUNTY_CHANGE_DIFFICULTY:
+        case Otc::TASK_BOARD_OPTION_BOUNTY_SELECT_TASK:
+        case Otc::TASK_BOARD_OPTION_BOUNTY_TALISMAN_UPGRADE:
+        case Otc::TASK_BOARD_OPTION_WEEKLY_DELIVER:
+        case Otc::TASK_BOARD_OPTION_WEEKLY_SELECT_DIFFICULTY:
+            msg->addU8(static_cast<uint8_t>(value));
+            break;
+        case Otc::TASK_BOARD_OPTION_HUNTING_SHOP_BUY_OFFER:
+            msg->addU8(static_cast<uint8_t>(value));
+            msg->addU8(static_cast<uint8_t>(extraValue));
+            break;
+        case Otc::TASK_BOARD_OPTION_PREFERRED_UNLOCK:
+        case Otc::TASK_BOARD_OPTION_PREFERRED_CLEAR:
+        case Otc::TASK_BOARD_OPTION_UNWANTED_CLEAR:
+            msg->addU16(value);
+            break;
+        case Otc::TASK_BOARD_OPTION_PREFERRED_ASSIGN:
+        case Otc::TASK_BOARD_OPTION_UNWANTED_ASSIGN:
+            msg->addU16(value);
+            msg->addU16(extraValue);
+            break;
+        case Otc::TASK_BOARD_OPTION_OPEN_BOUNTY:
+        case Otc::TASK_BOARD_OPTION_OPEN_WEEKLY:
+        case Otc::TASK_BOARD_OPTION_BOUNTY_REROLL:
+        case Otc::TASK_BOARD_OPTION_BOUNTY_CLAIM_DAILY:
+        case Otc::TASK_BOARD_OPTION_BOUNTY_CLAIM_REWARD:
+        case Otc::TASK_BOARD_OPTION_OPEN_HUNTING_SHOP:
+            break;
+        default:
+            g_logger.error("Unknown task board action option {}", static_cast<int>(option));
+            return;
+    }
     send(msg);
 }
 
@@ -1703,6 +1785,38 @@ void ProtocolGame::openContainerQuickLoot(const uint8_t action, const uint8_t ca
     }
     send(msg);
 }
+
+void ProtocolGame::sendWeaponProficiencyAction(const uint8_t actionType, const uint16_t itemId)
+{
+    // Opcode 0xB3 (179) - Weapon Proficiency Action
+    // actionType: 0 = request item info, 1 = request all items, 2 = reset perks, 3 = apply perks
+    const auto msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientWeaponProficiency);
+    msg->addU8(actionType);
+    if (actionType == 0 || actionType == 2) {
+        msg->addU16(itemId);
+    }
+    send(msg);
+}
+
+void ProtocolGame::sendWeaponProficiencyApply(const uint16_t itemId, const std::vector<std::pair<uint8_t, uint8_t>>& perks)
+{
+    // Opcode 0xB3 (179) - Weapon Proficiency Apply Perks
+    // Structure: byte actionType (3), uint16 itemId, uint8 perksCount, [perksCount * {uint8 level, uint8 perkPosition}]
+    const auto msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientWeaponProficiency);
+    msg->addU8(3); // WEAPON_PROFICIENCY_APPLY_PERKS
+    msg->addU16(itemId);
+    msg->addU8(static_cast<uint8_t>(perks.size()));
+    for (const auto& perk : perks) {
+        // Server expects 0-indexed values and adds +1 internally
+        // Lua sends 0-indexed values, so we pass them directly
+        msg->addU8(perk.first);   // level (0-indexed)
+        msg->addU8(perk.second);  // perkPosition (0-indexed)
+    }
+    send(msg);
+}
+
 void ProtocolGame::sendOpenWheel(uint32_t playerId) {  
     const auto& msg = std::make_shared<OutputMessage>();  
     msg->addU8(Proto::ClientOpenWheel); // 0x61  

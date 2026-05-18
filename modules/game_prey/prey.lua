@@ -304,7 +304,9 @@ end
 function toggleTracker()
     if preyTracker:isVisible() then
         preyTracker:hide()
-        onMiniWindowClose()
+        if preyTrackerButton then
+            preyTrackerButton:setOn(false)
+        end
     else
         if not preyTracker:getParent() then
             local panel = modules.game_interface.findContentPanelAvailable(preyTracker, preyTracker:getMinimumHeight())
@@ -315,7 +317,9 @@ function toggleTracker()
             panel:addChild(preyTracker)
         end
         preyTracker:show()
-        onMiniWindowOpen()
+        if preyTrackerButton then
+            preyTrackerButton:setOn(true)
+        end
     end
 end
 

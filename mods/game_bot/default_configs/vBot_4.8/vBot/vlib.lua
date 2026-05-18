@@ -760,6 +760,10 @@ end
 -- also considers equipped items
 -- returns number
 function itemAmount(id)
+    if player and player.getInventoryCount then
+        return player:getInventoryCount(id, 0)
+    end
+
     return player:getItemsCount(id)
 end
 

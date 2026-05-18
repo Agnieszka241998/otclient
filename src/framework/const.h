@@ -283,33 +283,8 @@ namespace Fw
         KeyboardNoModifier = 0,
         KeyboardCtrlModifier = 1,
         KeyboardAltModifier = 2,
-        KeyboardShiftModifier = 4,
-        KeyboardMetaModifier = 8,
-        KeyboardPrimaryModifier = 16
+        KeyboardShiftModifier = 4
     };
-
-    inline bool isPrimaryModifierOnly(const int modifiers)
-    {
-#if defined(__APPLE__)
-        const int primaryMask = KeyboardPrimaryModifier;
-#else
-        const int primaryMask = KeyboardPrimaryModifier | KeyboardCtrlModifier;
-#endif
-        return (modifiers & primaryMask) == primaryMask &&
-               (modifiers & ~primaryMask) == 0;
-    }
-
-    inline bool isPrimaryShiftModifierOnly(const int modifiers)
-    {
-#if defined(__APPLE__)
-        const int primaryMask = KeyboardPrimaryModifier;
-#else
-        const int primaryMask = KeyboardPrimaryModifier | KeyboardCtrlModifier;
-#endif
-        const int requiredMask = primaryMask | KeyboardShiftModifier;
-        return (modifiers & requiredMask) == requiredMask &&
-               (modifiers & ~requiredMask) == 0;
-    }
 
     enum WidgetState : int32_t
     {

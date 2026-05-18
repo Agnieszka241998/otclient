@@ -1,5 +1,17 @@
 marketWindow = nil
 
+itemsPanel = itemsPanel or {}
+buyOfferTable = buyOfferTable or { rows = {}, columns = {} }
+sellOfferTable = sellOfferTable or { rows = {}, columns = {} }
+selectedOffer = selectedOffer or { [0] = nil, [1] = nil }
+Market = Market or {}
+offerTypeList = offerTypeList or {}
+piecePriceEdit = piecePriceEdit or {}
+amountEdit = amountEdit or {}
+balanceLabel = balanceLabel or {}
+searchEdit = searchEdit or {}
+anonymous = anonymous or {}
+
 local marketItems = {}
 local categoryList = {}
 local depotLockerItems = {}
@@ -23,6 +35,209 @@ local lastItemTier = 0
 local currentActionType = 1
 local isSearching = false
 local isRebuildingCategory = false
+
+local function getMainMarketPanel()
+    return mainMarket or (marketWindow and marketWindow.contentPanel and marketWindow.contentPanel.mainMarket)
+end
+
+local function decorateCompatibilityItemWidget(widget)
+    if not widget or widget.__marketCompatItem then
+        return
+    end
+
+    widget.__marketCompatItem = true
+    widget.setChecked = function(self, checked)
+        if checked and marketWindow and marketWindow.contentPanel and marketWindow.contentPanel.itemList then
+            marketWindow.contentPanel.itemList:focusChild(self)
+        end
+    end
+
+    if widget.item then
+        widget.item.getText = function(self)
+            local item = self:getItem()
+            if not item then
+                return "0"
+            end
+            return tostring(item:getCount() or 0)
+        end
+    end
+end
+
+local function decorateCompatibilityOfferWidget(widget, isSell)
+    if not widget or widget.__marketCompatOffer then
+        return
+    end
+
+    widget.__marketCompatOffer = true
+    widget.focus = function(self)
+        local marketPanel = getMainMarketPanel()
+        if not marketPanel then
+            return
+        end
+
+        if isSell then
+            marketPanel.sellOffersList:focusChild(self)
+        else
+            marketPanel.buyOffersList:focusChild(self)
+        end
+    end
+end
+
+local function updateCompatibilityOfferTable(targetTable, listWidget, isSell)
+    targetTable.rows = {}
+    targetTable.columns = {}
+
+    if not listWidget then
+        return
+    end
+
+    for _, child in ipairs(listWidget:getChildren()) do
+        decorateCompatibilityOfferWidget(child, isSell)
+        table.insert(targetTable.rows, child)
+    end
+
+    local firstChild = listWidget:getFirstChild()
+    if firstChild then
+        targetTable.columns[1] = {
+            firstChild.name,
+            firstChild.amount,
+            firstChild.totalPrice,
+            firstChild.piecePrice
+        }
+    end
+end
+
+local function updateSelectedOfferCompatibility(index, offerData)
+    if not offerData then
+        selectedOffer[index] = nil
+        return
+    end
+
+    selectedOffer[index] = {
+        getCounter = function()
+            return offerData.counter
+        end,
+        getTimeStamp = function()
+            return offerData.timestamp
+        end
+    }
+end
+
+local function syncMarketCompatibility()
+    local marketPanel = getMainMarketPanel()
+    if not marketPanel then
+        buyOfferTable.rows = {}
+        buyOfferTable.columns = {}
+        sellOfferTable.rows = {}
+        sellOfferTable.columns = {}
+        return
+    end
+
+    updateCompatibilityOfferTable(sellOfferTable, marketPanel.sellOffersList, true)
+    updateCompatibilityOfferTable(buyOfferTable, marketPanel.buyOffersList, false)
+end
+
+function searchEdit:setText(text)
+    if marketWindow and marketWindow.contentPanel and marketWindow.contentPanel.searchText then
+        marketWindow.contentPanel.searchText:setText(text or "")
+    end
+end
+
+function searchEdit:getText()
+    if marketWindow and marketWindow.contentPanel and marketWindow.contentPanel.searchText then
+        return marketWindow.contentPanel.searchText:getText()
+    end
+    return ""
+end
+
+function balanceLabel:getText()
+    if marketWindow and marketWindow.contentPanel and marketWindow.contentPanel.moneyPanel then
+        local gold = marketWindow.contentPanel.moneyPanel.gold:getText() or "0"
+        return "Balance: " .. gold .. " gold"
+    end
+    return "Balance: 0 gold"
+end
+
+function offerTypeList:setCurrentOption(value)
+    local marketPanel = getMainMarketPanel()
+    if not marketPanel then
+        return
+    end
+
+    if value == "Sell" then
+        changeOfferType(marketPanel.createOfferSell, true)
+    else
+        changeOfferType(marketPanel.createOfferBuy, false)
+    end
+end
+
+function piecePriceEdit:setValue(value)
+    local marketPanel = getMainMarketPanel()
+    if not marketPanel then
+        return
+    end
+
+    marketPanel.piecePriceCreate:setText(tostring(value or 0))
+    onPiecePriceEdit(marketPanel.piecePriceCreate)
+end
+
+function piecePriceEdit:getText()
+    local marketPanel = getMainMarketPanel()
+    if not marketPanel then
+        return ""
+    end
+    return marketPanel.piecePriceCreate:getText()
+end
+
+function amountEdit:setValue(value)
+    local marketPanel = getMainMarketPanel()
+    if not marketPanel then
+        return
+    end
+
+    marketPanel.amountCreateScrollBar:setValue(tonumber(value) or 0)
+end
+
+function amountEdit:getText()
+    local marketPanel = getMainMarketPanel()
+    if not marketPanel then
+        return "0"
+    end
+    return marketPanel.createOfferAmount:getText() or "0"
+end
+
+function anonymous:setChecked(value)
+    local marketPanel = getMainMarketPanel()
+    if marketPanel and marketPanel.anonymous then
+        marketPanel.anonymous:setChecked(value and true or false)
+    end
+end
+
+function anonymous:isChecked()
+    local marketPanel = getMainMarketPanel()
+    return marketPanel and marketPanel.anonymous and marketPanel.anonymous:isChecked() or false
+end
+
+function itemsPanel:getFirstChild()
+    if marketWindow and marketWindow.contentPanel and marketWindow.contentPanel.itemList then
+        local child = marketWindow.contentPanel.itemList:getFirstChild()
+        decorateCompatibilityItemWidget(child)
+        return child
+    end
+    return nil
+end
+
+function Market.acceptMarketOffer(amount, timestamp, counter)
+    sendMarketAcceptOffer(timestamp, counter, amount)
+end
+
+function Market.createNewOffer()
+    createMarketOffer()
+end
+
+function Market.close()
+    closeMarket()
+end
 
 local cache = {
     SCROLL_MARKET_ITEMS = {
@@ -761,6 +976,7 @@ function onMarketBrowse(intOffers, nameOffers)
             end
 
             local widget = g_ui.createWidget('MarketOfferWidget', mainMarket.buyOffersList)
+            decorateCompatibilityOfferWidget(widget, false)
             local color = colorCount % 2 == 0 and '#484848' or '#414141'
             local holder = data.holder
             widget:setId(color)
@@ -818,6 +1034,7 @@ function onMarketBrowse(intOffers, nameOffers)
             end
 
             local widget = g_ui.createWidget('MarketOfferWidget', mainMarket.sellOffersList)
+            decorateCompatibilityOfferWidget(widget, true)
             local color = colorCount % 2 == 0 and '#484848' or '#414141'
             local holder = data.holder
             widget:setId(color)
@@ -876,6 +1093,10 @@ function onMarketBrowse(intOffers, nameOffers)
         onSelectBuyOffer(self, selected, oldFocus)
     end
 
+    updateSelectedOfferCompatibility(0, nil)
+    updateSelectedOfferCompatibility(1, nil)
+    syncMarketCompatibility()
+
     onUpdateChildItem(itemID, tier)
     local firstChild = mainMarket.sellOffersList:getChildren()[1]
     if firstChild then
@@ -886,6 +1107,8 @@ function onMarketBrowse(intOffers, nameOffers)
     if firstChild then
         mainMarket.buyOffersList:focusChild(firstChild)
     end
+
+    syncMarketCompatibility()
 end
 
 function onBuyListValueChange(scroll, value, delta)
@@ -937,6 +1160,8 @@ function onBuyListValueChange(scroll, value, delta)
             end
         end
     end
+
+    syncMarketCompatibility()
 end
 
 function onSellListValueChange(scroll, value, delta)
@@ -996,6 +1221,8 @@ function onSellListValueChange(scroll, value, delta)
             end
         end
     end
+
+    syncMarketCompatibility()
 end
 
 function onItemListValueChange(scroll, value, delta)
@@ -1181,6 +1408,7 @@ function onSelectChildCategory(widget, selected, keepFilter)
         local count = getDepotItemCount(itemInfo.thingType:getId(), tier)
 
         local widget = g_ui.createWidget('MarketItemList', itemList)
+        decorateCompatibilityItemWidget(widget)
 
         widget.item:setItemId(itemInfo.thingType:getId())
 
@@ -1378,6 +1606,10 @@ function onClearMainMarket(cleanList)
 
     mainMarket.grossAmount:setText(0)
     mainMarket.grossAmount.value = 0
+
+    updateSelectedOfferCompatibility(0, nil)
+    updateSelectedOfferCompatibility(1, nil)
+    syncMarketCompatibility()
 end
 
 function toggleShowLockerOnly(widget, checked)
@@ -1394,6 +1626,7 @@ end
 
 function onSelectSellOffer(widget, selected, oldFocus)
     if not selected then
+        updateSelectedOfferCompatibility(0, nil)
         return
     end
 
@@ -1419,6 +1652,12 @@ function onSelectSellOffer(widget, selected, oldFocus)
     cache.SCROLL_SELL_OFFERS.lastSelected = selected.offerId
 
     local currentOffer = sellOffers[cache.SCROLL_SELL_OFFERS.lastSelected]
+    if not currentOffer then
+        updateSelectedOfferCompatibility(0, nil)
+        return
+    end
+
+    updateSelectedOfferCompatibility(0, currentOffer)
     if money < currentOffer.price then
         mainMarket.sellAcceptButton:setEnabled(false)
         updateSellCount(nil, 0)
@@ -1457,10 +1696,13 @@ function onSelectSellOffer(widget, selected, oldFocus)
     if cache.SCROLL_SELL_OFFERS.listFit > 11 then
         onSellListValueChange(sellListScroll, sellListScroll:getValue(), 0)
     end
+
+    syncMarketCompatibility()
 end
 
 function onSelectBuyOffer(widget, selected, oldFocus)
     if not selected or table.empty(lastSelectedItem) then
+        updateSelectedOfferCompatibility(1, nil)
         return
     end
 
@@ -1491,6 +1733,12 @@ function onSelectBuyOffer(widget, selected, oldFocus)
     end
 
     local currentOffer = buyOffers[cache.SCROLL_BUY_OFFERS.lastSelected]
+    if not currentOffer then
+        updateSelectedOfferCompatibility(1, nil)
+        return
+    end
+
+    updateSelectedOfferCompatibility(1, currentOffer)
 
     mainMarket.amountBuyScrollBar:setRange(1, math.min(count, currentOffer.amount))
     mainMarket.amountBuyScrollBar:setValue(lastSelectedItem.itemId == 22118 and 25 or 1)
@@ -1525,6 +1773,8 @@ function onSelectBuyOffer(widget, selected, oldFocus)
     if cache.SCROLL_BUY_OFFERS.listFit > 11 then
         onBuyListValueChange(buyListScroll, buyListScroll:getValue(), 0)
     end
+
+    syncMarketCompatibility()
 end
 
 function updateSellCount(widget, value)
@@ -1978,6 +2228,7 @@ function onSearchItem(textField)
         local count = getDepotItemCount(itemInfo.thingType:getId(), tier)
 
         local widget = g_ui.createWidget('MarketItemList', itemList)
+        decorateCompatibilityItemWidget(widget)
 
         widget.item:setItemId(itemInfo.thingType:getId())
 
@@ -2123,6 +2374,7 @@ function onShowRedirect(item)
         local count = getDepotItemCount(itemInfo.thingType:getId(), tier)
 
         local widget = g_ui.createWidget('MarketItemList', itemList)
+        decorateCompatibilityItemWidget(widget)
 
         widget.item:setItemId(itemInfo.thingType:getId())
 

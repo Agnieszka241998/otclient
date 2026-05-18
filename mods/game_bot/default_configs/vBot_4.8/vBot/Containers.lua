@@ -404,12 +404,8 @@ if rootWidget then
         for i, container in ipairs(getContainers()) do
             local containerWindow = container.window
             if containerWindow then
-                local contents = containerWindow:getChildById('contentsPanel')
-                local step = 0
-                if contents then
-                    local layout = contents:getLayout()
-                    step = layout:getCellSize().height + layout:getCellSpacing()
-                end
+                local layout = containerWindow:getChildById('contentsPanel'):getLayout()
+                local step = layout:getCellSize().height + layout:getCellSpacing()
                 local chromeHeight = container:hasPages() and 55 or 31
                 containerWindow:setContentHeight(step + chromeHeight)
             end

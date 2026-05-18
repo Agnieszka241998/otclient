@@ -16,6 +16,9 @@ context.setupUI = function(otml, parent)
   end
   local widget = g_ui.loadUIFromString(otml, parent)
   widget.botWidget = true
+  if type(context._attachLegacyCheckCompat) == "function" then
+    context._attachLegacyCheckCompat(widget, true)
+  end
   return widget
 end
 
@@ -35,12 +38,13 @@ context.addTab = function(name)
     return tab.tabPanel.content
   end
 
-  local newTab = context.tabs:addTab(name, g_ui.createWidget('BotPanel')).tabPanel.content
+
+  local newTab = context.tabs:addTabGrid(name, g_ui.createWidget('BotPanel'), nil,modules.game_bot.getBotTabs()).tabPanel.content
   context.tabs:setOn(true)
-  for k, tab in pairs(context.tabs.tabs) do
-    if string.len(tab:getText()) > 7 then
-      tab:setFont('small-9px')
-    end
+    for k,tab in pairs(context.tabs.tabs) do
+      if string.len(tab:getText()) > 7 then
+        tab:setFont('small-9px')
+      end
   end
 
   return newTab
@@ -60,6 +64,9 @@ context.addSwitch = function(id, text, onClickCallback, parent)
   switch:setId(id)
   switch:setText(text)
   switch.onClick = onClickCallback
+  if type(context._attachLegacyCheckCompat) == "function" then
+    context._attachLegacyCheckCompat(switch, true)
+  end
   return switch
 end
 

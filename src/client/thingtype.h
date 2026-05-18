@@ -159,7 +159,6 @@ public:
     uint32_t getSkillWheelGemQualityId() { return m_skillWheelGem.gem_quality_id; }
     uint32_t getSkillWheelGemVocationId() { return m_skillWheelGem.vocation_id; }
     uint32_t getCyclopediaType() { return m_cyclopediaType; }
-    uint32_t getProficiencyId() { return m_proficiencyId; }
 
     bool isDecoKit() { return (m_flags & ThingFlagAttrDecoKit); }
     bool isLoading() const { return m_loading.load(std::memory_order_acquire); }
@@ -195,6 +194,8 @@ public:
 
     std::string getName() { return m_name; }
     std::string getDescription() { return m_description; }
+
+    uint32_t getProficiencyId() const { return m_proficiencyId; } // game feature proficiency
 
 private:
     static ThingFlagAttr thingAttrToThingFlagAttr(ThingAttr attr);

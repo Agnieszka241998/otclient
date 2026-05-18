@@ -61,8 +61,7 @@ bool ResourceManager::discoverWorkDir(const std::string& existentFile)
                                     g_resources.getBaseDir(),
                                     g_resources.getBaseDir() + "/game_data/",
                                     g_resources.getBaseDir() + "../",
-                                    g_resources.getBaseDir() + "../share/" + g_app.getCompactName() + "/",
-                                    };
+                                    g_resources.getBaseDir() + "../share/" + g_app.getCompactName() + "/" };
 
     bool found = false;
     for (const auto& dir : possiblePaths) {
@@ -704,33 +703,21 @@ bool ResourceManager::launchCorrect(const std::vector<std::string>& args) { // c
 #if (defined(ANDROID) || defined(FREE_VERSION))
     return false;
 #else
-    const auto normalizeName = [](std::string name) {
-        const auto dash = name.find('-');
-        if (dash != std::string::npos) {
-            name = name.substr(0, dash);
-        }
-        stdext::tolower(name);
-        return name;
-    };
-
-    auto fileName2 = normalizeName(m_binaryPath.stem().string());
+    auto fileName2 = m_binaryPath.stem().string();
+    fileName2 = stdext::split(fileName2, "-")[0];
+    stdext::tolower(fileName2);
 
     const std::filesystem::path path(m_binaryPath.parent_path());
     std::error_code ec;
-    if (path.empty() || !std::filesystem::exists(path, ec) || ec) {
-        return false;
-    }
-
     auto lastWrite = last_write_time(m_binaryPath, ec);
     std::filesystem::path binary = m_binaryPath;
-    for (auto it = std::filesystem::directory_iterator(path, ec);
-         !ec && it != std::filesystem::directory_iterator();
-         ++it) {
-        const auto& entry = *it;
+    for (auto& entry : std::filesystem::directory_iterator(path)) {
         if (is_directory(entry.path()))
             continue;
 
-        auto fileName1 = normalizeName(entry.path().stem().string());
+        auto fileName1 = entry.path().stem().string();
+        fileName1 = stdext::split(fileName1, "-")[0];
+        stdext::tolower(fileName1);
         if (fileName1 != fileName2)
             continue;
 
@@ -744,18 +731,13 @@ bool ResourceManager::launchCorrect(const std::vector<std::string>& args) { // c
         }
     }
 
-    if (ec) {
-        return false;
-    }
-
-    for (auto it = std::filesystem::directory_iterator(path, ec);
-         !ec && it != std::filesystem::directory_iterator();
-         ++it) { // remove old
-        const auto& entry = *it;
+    for (auto& entry : std::filesystem::directory_iterator(path)) { // remove old
         if (is_directory(entry.path()))
             continue;
 
-        auto fileName1 = normalizeName(entry.path().stem().string());
+        auto fileName1 = entry.path().stem().string();
+        fileName1 = stdext::split(fileName1, "-")[0];
+        stdext::tolower(fileName1);
         if (fileName1 != fileName2)
             continue;
 
@@ -765,10 +747,6 @@ bool ResourceManager::launchCorrect(const std::vector<std::string>& args) { // c
             std::error_code _ec;
             std::filesystem::remove(entry.path(), _ec);
         }
-    }
-
-    if (ec) {
-        return false;
     }
 
     if (binary == m_binaryPath)

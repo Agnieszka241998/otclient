@@ -102,6 +102,7 @@ function init()
 
     bottomSplitter = gameRootPanel:getChildById('bottomSplitter')
     gameMapPanel = gameRootPanel:getChildById('gameMapPanel')
+    modules.game_interface.gameMapPanel = gameMapPanel
     gameMainRightPanel = gameRootPanel:getChildById('gameMainRightPanel')
     gameRightPanel = gameRootPanel:getChildById('gameRightPanel')
     gameRightExtraPanel = gameRootPanel:getChildById('gameRightExtraPanel')
@@ -218,6 +219,7 @@ function bindKeys()
 end
 
 function terminate()
+    modules.game_interface.gameMapPanel = nil
     StatsBar.terminate()
 
     hide()
@@ -1164,7 +1166,7 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
             (mouseButton == MouseLeftButton or mouseButton == MouseRightButton) then
             g_game.look(lookThing)
             return true
-        elseif useThing and g_keyboard.isPrimaryModifierOnly(keyboardModifiers) and
+        elseif useThing and keyboardModifiers == KeyboardCtrlModifier and
             (mouseButton == MouseLeftButton or mouseButton == MouseRightButton) then
             local smartLeftClick = modules.client_options.getOption('smartLeftClick')
 
@@ -1195,7 +1197,7 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
                 end
             end
             return true
-        elseif useThing and useThing:isContainer() and g_keyboard.isPrimaryShiftModifierOnly(keyboardModifiers) and
+        elseif useThing and useThing:isContainer() and keyboardModifiers == KeyboardCtrlShiftModifier and
             (mouseButton == MouseLeftButton or mouseButton == MouseRightButton) then
             g_game.open(useThing)
             return true
@@ -1442,7 +1444,7 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
         end
 
         -- Common key combinations for all Classic Control modes
-        if useThing and useThing:isContainer() and g_keyboard.isPrimaryShiftModifierOnly(keyboardModifiers) and
+        if useThing and useThing:isContainer() and keyboardModifiers == KeyboardCtrlShiftModifier and
             (mouseButton == MouseLeftButton or mouseButton == MouseRightButton) then
             g_game.open(useThing)
             return true
@@ -1454,7 +1456,7 @@ function processMouseAction(menuPosition, mouseButton, autoWalkPos, lookThing, u
                 (g_mouse.isPressed(MouseRightButton) and mouseButton == MouseLeftButton)) then
             g_game.look(lookThing)
             return true
-        elseif useThing and g_keyboard.isPrimaryModifierOnly(keyboardModifiers) and
+        elseif useThing and keyboardModifiers == KeyboardCtrlModifier and
             (mouseButton == MouseLeftButton or mouseButton == MouseRightButton) then
             createThingMenu(menuPosition, lookThing, useThing, creatureThing)
             return true

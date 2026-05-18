@@ -116,7 +116,6 @@ function clear()
 
   botTabs:clearTabs()
   botTabs:setOn(false)
-  botTabs:setHeight(0)
 
   botMessages:destroyChildren()
   botMessages:updateLayout()
@@ -154,23 +153,6 @@ function clear()
   end
 end
 
-local function updateBotTabsHeight()
-  botTabs:updateLayout()
-  local layout = botTabs:getLayout()
-  if not botTabs:isOn() or not (layout and layout:isUIGridLayout()) then
-    botTabs:setHeight(0)
-    return
-  end
-
-  local lines = layout:getNumLines()
-  if lines <= 0 then
-    botTabs:setHeight(0)
-    return
-  end
-
-  botTabs:setHeight(lines * layout:getCellSize().height)
-end
-
 function loadConfigsList()
   if not g_resources.directoryExists("/bot") then
     g_resources.makeDir("/bot")
@@ -192,6 +174,7 @@ function loadConfigsList()
     end
   end
 
+  -- Fallback handlers; refresh() overwrites these with full online versions
   enableButton.onClick = function(widget)
     if g_game.isOnline() then
       refresh()
@@ -211,7 +194,8 @@ function refresh()
   clear()
 
   loadConfigsList()
-  if not configList.options or #configList.options == 0 then
+  local configs = g_resources.listDirectoryFiles("/bot", false, false)
+  if #configs == 0 then
     statusLabel:setOn(true)
     statusLabel:setText("No configs found in " .. g_resources.getWriteDir() .. "bot/")
     return
@@ -289,7 +273,6 @@ function refresh()
     return onError(result)
   end
 
-  updateBotTabsHeight()
   statusLabel:setOn(false)
   botExecutor = result
   check()
@@ -564,6 +547,7 @@ function initCallbacks()
     onCloseChannel = botCloseChannel,
     onChannelEvent = botChannelEvent,
     onImbuementWindow = botImbuementWindow,
+    onImbuementItem = botImbuementItem,
     onModalDialog = botModalDialog,
     onAttackingCreatureChange = botAttackingCreatureChange,
     onAddItem = botContainerAddItem,
@@ -630,6 +614,7 @@ function terminateCallbacks()
     onCloseChannel = botCloseChannel,
     onChannelEvent = botChannelEvent,
     onImbuementWindow = botImbuementWindow,
+    onImbuementItem = botImbuementItem,
     onModalDialog = botModalDialog,
     onAttackingCreatureChange = botAttackingCreatureChange,
     onEditText = botGameEditText,
@@ -821,6 +806,10 @@ function botImbuementWindow(itemId, slots, activeSlots, imbuements, needItems)
   safeBotCall(function() botExecutor.callbacks.onImbuementWindow(itemId, slots, activeSlots, imbuements, needItems) end)
 end
 
+function botImbuementItem(itemId, tier, slots, activeSlots, imbuements, needItems)
+  botImbuementWindow(itemId, slots, activeSlots, imbuements, needItems)
+end
+
 function botModalDialog(id, title, message, buttons, enterButton, escapeButton, choices, priority)
   if botExecutor == nil then return false end
   safeBotCall(function() botExecutor.callbacks.onModalDialog(id, title, message, buttons, enterButton, escapeButton, choices, priority) end)
@@ -869,4 +858,8 @@ end
 function botInventoryChange(player, slot, item, oldItem)
   if botExecutor == nil then return false end
   safeBotCall(function() botExecutor.callbacks.onInventoryChange(player, slot, item, oldItem) end)
+end
+
+function getBotTabs()
+  return botTabs
 end

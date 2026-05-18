@@ -119,7 +119,7 @@ context.macro = function(timeout, name, hotkey, callback, parent)
       if executionTime > 100 then
         context.warning("Slow macro (" .. executionTime .. "ms): " .. macro.name .. " - " .. desc)
       end
-      context._currentExecution = nil
+      context._currentExecution = false
       return true
     end
   end
@@ -173,7 +173,7 @@ context.hotkey = function(keys, name, callback, parent, single)
       if executionTime > 100 then
         context.warning("Slow hotkey (" .. executionTime .. "ms): " .. hotkeyData.name .. " - " .. desc)
       end
-      context._currentExecution = nil
+      context._currentExecution = false
       return true
     end
   end

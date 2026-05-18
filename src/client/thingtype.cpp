@@ -436,6 +436,15 @@ void ThingType::applyAppearanceFlags(const appearances::AppearanceFlags& flags)
         m_flags |= ThingFlagAttrDecoKit;
     }
 
+    // proficiency flag
+    if (flags.has_proficiency()) {
+        if (g_game.getFeature(Otc::GameProficiency)) {
+            m_proficiencyId = flags.proficiency().id();
+            m_flags |= ThingFlagAttrProficiency;
+        }
+    }
+
+    // skill wheel gem
     if (flags.has_skillwheel_gem()) {
         m_skillWheelGem.gem_quality_id = flags.skillwheel_gem().gem_quality_id();
         m_skillWheelGem.vocation_id = flags.skillwheel_gem().vocation_id();
@@ -444,10 +453,6 @@ void ThingType::applyAppearanceFlags(const appearances::AppearanceFlags& flags)
 
     if (flags.has_dual_wielding() && flags.dual_wielding()) {
         m_flags |= ThingFlagAttrDualWield;
-    }
-
-    if (flags.has_proficiency()) {
-        m_proficiencyId = flags.proficiency().proficiency_id();
     }
 }
 #endif
@@ -809,7 +814,7 @@ const TexturePtr& ThingType::getTexture(const int animationPhase)
             m_loading.store(false, std::memory_order_release);
         };
 
-        g_asyncDispatcher->detach_task(std::move(action));
+        g_asyncDispatcher.detach_task(std::move(action));
     }
 
     return m_textureNull;

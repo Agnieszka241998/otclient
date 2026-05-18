@@ -27,10 +27,6 @@
 #define GL_APICALL
 #define EGLAPI
 #include <GLES3/gl3.h>
-#elif defined(__APPLE__)
-#define GLEW_STATIC
-#define GLEW_NO_GLU
-#include <GL/glew.h>
 #else
 #ifndef _MSC_VER
 #define GLEW_STATIC

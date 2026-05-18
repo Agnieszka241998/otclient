@@ -114,9 +114,8 @@ end
 -- /*=============================================
 -- =            Lifecycle            =
 -- =============================================*/
-
-function InspectController:onGameStart()
-    if g_game.getClientVersion() < 1281 then
+function InspectController:onInit()
+     if g_game.getClientVersion() < 1281 then
         self:scheduleEvent(function()
             g_modules.getModule("game_inspect"):unload()
         end, 100, "unloadInspect")
@@ -136,6 +135,9 @@ function InspectController:onGameStart()
                 tostring(creatureId), tostring(state)))
         end
     })
+end
+function InspectController:onGameStart()
+   
 end
 
 function InspectController:onGameEnd()

@@ -29,11 +29,6 @@
 
 #include "framework/platform/staticdata.h"
 
-#include <algorithm>
-#include <cmath>
-#include <limits>
-#include <type_traits>
-
 template<typename T>
 int push_internal_luavalue(T v);
 
@@ -48,32 +43,6 @@ bool luavalue_cast(int index, int& i);
 // double
 int push_luavalue(double d);
 bool luavalue_cast(int index, double& d);
-
-namespace detail {
-    constexpr double maxExactIntegerAsDouble = 9007199254740992.0; // 2^53
-
-    template<typename T>
-    inline bool luavalue_cast_integer_from_double(const int index, T& v)
-    {
-        static_assert(std::is_integral_v<T>);
-
-        double d;
-        if (!luavalue_cast(index, d))
-            return false;
-        if (!std::isfinite(d) || std::trunc(d) != d)
-            return false;
-
-        const double typeMin = static_cast<double>(std::numeric_limits<T>::lowest());
-        const double typeMax = static_cast<double>(std::numeric_limits<T>::max());
-        const double exactMin = std::numeric_limits<T>::is_signed ? -maxExactIntegerAsDouble : 0.0;
-        const double exactMax = maxExactIntegerAsDouble;
-        if (d < std::max(typeMin, exactMin) || d > std::min(typeMax, exactMax))
-            return false;
-
-        v = static_cast<T>(d);
-        return true;
-    }
-}
 
 // float
 inline int push_luavalue(const float f) { push_luavalue(static_cast<double>(f)); return 1; }
@@ -122,14 +91,8 @@ inline bool luavalue_cast(const int index, uint32_t& v)
 inline int push_luavalue(const int64_t v) { push_luavalue(static_cast<double>(v)); return 1; }
 inline bool luavalue_cast(const int index, int64_t& v)
 {
-    return detail::luavalue_cast_integer_from_double(index, v);
-}
-
-// uint64
-inline int push_luavalue(const uint64_t v) { push_luavalue(static_cast<double>(v)); return 1; }
-inline bool luavalue_cast(const int index, uint64_t& v)
-{
-    return detail::luavalue_cast_integer_from_double(index, v);
+    double d;
+    const bool r = luavalue_cast(index, d); v = d; return r;
 }
 
 using lua_u64 = std::conditional_t<sizeof(unsigned long) == 8, unsigned long, std::uint64_t>;
@@ -137,7 +100,6 @@ using lua_unsigned_long = lua_u64;
 
 static_assert(sizeof(lua_u64) == 8, "lua_u64 must be 64-bit");
 
-template<typename T = unsigned long> requires (!std::is_same_v<T, unsigned long long>)
 inline int push_luavalue(const unsigned long v)
 {
     if constexpr (sizeof(unsigned long) <= sizeof(uint32_t)) {
@@ -148,7 +110,6 @@ inline int push_luavalue(const unsigned long v)
     return 1;
 }
 
-template<typename T = unsigned long> requires (!std::is_same_v<T, unsigned long long>)
 inline bool luavalue_cast(const int index, unsigned long& v)
 {
     if constexpr (sizeof(unsigned long) <= sizeof(uint32_t)) {
@@ -158,20 +119,26 @@ inline bool luavalue_cast(const int index, unsigned long& v)
         return r;
     }
 
-    return detail::luavalue_cast_integer_from_double(index, v);
+    double temp;
+    const bool r = luavalue_cast(index, temp);
+    v = static_cast<unsigned long>(temp);
+    return r;
 }
 
-template<typename T = lua_u64> requires (!std::is_same_v<T, unsigned long>)
+template<typename T = lua_u64, std::enable_if_t<!std::is_same_v<T, unsigned long>, int> = 0>
 inline int push_luavalue(lua_u64 v)
 {
     push_luavalue(static_cast<double>(v));
     return 1;
 }
 
-template<typename T = lua_u64> requires (!std::is_same_v<T, unsigned long> && !std::is_same_v<T, unsigned long long>)
+template<typename T = lua_u64, std::enable_if_t<!std::is_same_v<T, unsigned long>, int> = 0>
 inline bool luavalue_cast(const int idx, lua_u64& v)
 {
-    return detail::luavalue_cast_integer_from_double(idx, v);
+    double d;
+    const bool r = luavalue_cast(idx, d);
+    v = static_cast<lua_u64>(d);
+    return r;
 }
 
 // string
@@ -278,6 +245,9 @@ template<class K, class V, class H>
 bool luavalue_cast(int index, std::unordered_map<K, V, H>& map);
 
 // pair
+template<class K, class V>
+int push_luavalue(const std::pair<K, V>& pair);
+
 template<class K, class V>
 bool luavalue_cast(int index, std::pair<K, V>& pair);
 
@@ -618,26 +588,39 @@ bool luavalue_cast(const int index, std::unordered_map<K, V, H>& map)
 }
 
 template<class K, class V>
+int push_luavalue(const std::pair<K, V>& pair)
+{
+    g_lua.createTable(2, 0);
+    push_internal_luavalue(pair.first);
+    g_lua.rawSeti(1);
+    push_internal_luavalue(pair.second);
+    g_lua.rawSeti(2);
+    return 1;
+}
+
+template<class K, class V>
 bool luavalue_cast(const int index, std::pair<K, V>& pair)
 {
     if (g_lua.isTable(index)) {
-        g_lua.pushNil();
-        if (g_lua.next(index < 0 ? index - 1 : index)) {
-            K value;
-            if (!luavalue_cast(-1, value))
-                pair.first = value;
+        // Get first element (index 1 in Lua)
+        g_lua.rawGeti(1, index);
+        K firstValue;
+        if (!luavalue_cast(-1, firstValue)) {
             g_lua.pop();
-        } else {
             return false;
         }
-        if (g_lua.next(index < 0 ? index - 1 : index)) {
-            V value;
-            if (!luavalue_cast(-1, value))
-                pair.second = value;
+        pair.first = firstValue;
+        g_lua.pop();
+        
+        // Get second element (index 2 in Lua)
+        g_lua.rawGeti(2, index);
+        V secondValue;
+        if (!luavalue_cast(-1, secondValue)) {
             g_lua.pop();
-        } else {
             return false;
         }
+        pair.second = secondValue;
+        g_lua.pop();
 
         return true;
     }

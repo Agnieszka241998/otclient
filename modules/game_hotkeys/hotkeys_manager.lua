@@ -374,6 +374,8 @@ function onChooseItemMouseRelease(self, mousePosition, mouseButton)
         currentHotkeyLabel.itemId = item:getId()
         if item:isFluidContainer() then
             currentHotkeyLabel.subType = item:getSubType()
+        else
+            currentHotkeyLabel.subType = nil
         end
         if item:isMultiUse() then
             currentHotkeyLabel.useType = HOTKEY_MANAGER_USEWITH
@@ -598,7 +600,7 @@ function executeHotkeyItem(action, itemId, subType)
                 g_game.use(item)
             end
         else
-            g_game.useInventoryItem(itemId)
+            g_game.useInventoryItem(itemId, subType)
         end
     elseif action == HOTKEY_MANAGER_USEONSELF then
         if g_game.getClientVersion() < 780 or subType then
@@ -607,12 +609,13 @@ function executeHotkeyItem(action, itemId, subType)
                 g_game.useWith(item, g_game.getLocalPlayer())
             end
         else
-            g_game.useInventoryItemWith(itemId, g_game.getLocalPlayer())
+            g_game.useInventoryItemWith(itemId, g_game.getLocalPlayer(), subType)
         end
     elseif action == HOTKEY_MANAGER_USEONTARGET then
         local attackingCreature = g_game.getAttackingCreature()
         if not attackingCreature then
             local item = Item.create(itemId)
+            item:setCount(subType)
             if g_game.getClientVersion() < 780 or subType then
                 local tmpItem = g_game.findPlayerItem(itemId, subType or -1)
                 if not tmpItem then
@@ -634,10 +637,11 @@ function executeHotkeyItem(action, itemId, subType)
                 g_game.useWith(item, attackingCreature)
             end
         else
-            g_game.useInventoryItemWith(itemId, attackingCreature)
+            g_game.useInventoryItemWith(itemId, attackingCreature, subType)
         end
     elseif action == HOTKEY_MANAGER_USEWITH then
         local item = Item.create(itemId)
+        item:setCount(subType)
         if g_game.getClientVersion() < 780 or subType then
             local tmpItem = g_game.findPlayerItem(itemId, subType or -1)
             if not tmpItem then
@@ -731,6 +735,8 @@ function updateHotkeyForm(reset, dontUpdateCombo)
             currentItemPreview:setItemId(currentHotkeyLabel.itemId)
             if currentHotkeyLabel.subType then
                 currentItemPreview:setItemSubType(currentHotkeyLabel.subType)
+            else
+                currentItemPreview:setItemSubType(1)
             end
             if currentItemPreview:getItem():isMultiUse() then
                 useOnSelf:enable()
@@ -984,17 +990,8 @@ function canPerformKeyCombo(keyCombo)
     if not modules.game_console.isChatEnabled() then
         return true
     end
-    local platformType = g_window.getPlatformType() or ""
-    local isMacOS = platformType:find("MACOS") ~= nil
-    if isMacOS then
-        return  string.match(keyCombo, "Cmd%+") or
-                string.match(keyCombo, "Ctrl%+") or
-                string.match(keyCombo, "Alt%+") or
-                string.match(keyCombo, "Option%+") or
-                string.match(keyCombo, "F%d+")
-    end
     return  string.match(keyCombo, "Ctrl%+") or
-            string.match(keyCombo, "Alt%+") or
+            string.match(keyCombo, "Alt%+") or 
             string.match(keyCombo, "F%d+")
 end
 

@@ -390,6 +390,16 @@ public:
     void preyAction(uint8_t slot, uint8_t actionType, uint16_t index);
     void preyRequest();
 
+    // Task Board / SoulSeals / Offline Training related
+    void bountyTaskAction(uint8_t actionType, uint16_t value = 0);
+    void weeklyTaskAction(uint8_t actionType, uint16_t value = 0);
+    void taskHuntingShopRequest();
+    void taskHuntingShopPurchase(uint8_t offerIndex);
+    void bountyTalismanUpgrade(uint8_t pathIndex);
+    void bountyPreferredAction(uint8_t actionType, uint16_t slot, uint16_t raceId);
+    void soulsealFightAction(uint16_t raceId);
+    void sendStartOfflineTraining(const uint8_t skillType);
+
     // exiva related
     void sendExivaOptions(bool allowAll, bool allowOwnGuild, bool allowOwnParty, bool allowVipList,
                           bool allowPlayerWhitelist, bool allowGuildWhitelist,
@@ -408,9 +418,15 @@ public:
     void clearImbuement(uint8_t slot);
     void closeImbuingWindow();
     void imbuementDurations(bool isOpen = false);
-    void openWheelOfDestiny(uint32_t playerId);
-    void applyWheelOfDestiny(const std::vector<uint16_t>& wheelPointsVec, const std::vector<uint16_t>& activeGemsVec);
 
+    // weapon proficiency related
+    void sendWeaponProficiencyAction(uint8_t actionType, uint16_t itemId = 0);
+    void sendWeaponProficiencyApply(uint16_t itemId, const std::vector<std::pair<uint8_t, uint8_t>>& perks);
+    void sendWeaponProficiencyApplyLua(uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions);
+
+    void selectImbuementItem(uint16_t itemId, const Position& pos, uint8_t stackpos);
+    void selectImbuementScroll();
+    
     void enableTileThingLuaCallback(const bool value) { m_tileThingsLuaCallback = value; }
     bool isTileThingLuaCallbackEnabled() { return m_tileThingsLuaCallback; }
 
@@ -443,6 +459,7 @@ public:
     void requestBestiaryOverview(std::string_view catName, bool search = false, std::vector<uint16_t> raceIds = {});
     void requestBestiarySearch(uint16_t raceId);
     void requestSendBuyCharmRune(uint8_t runeId, uint8_t action, uint16_t raceId);
+    void requestSetCharacterTitle(uint8_t titleId);
     void requestSendCharacterInfo(uint32_t playerId, Otc::CyclopediaCharacterInfoType_t characterInfoType, uint16_t entriesPerPage = 0, uint16_t page = 0);
     void requestSendCyclopediaHouseAuction(Otc::CyclopediaHouseAuctionType_t type, uint32_t houseId, uint32_t timestamp = 0, uint64_t bidValue = 0, std::string_view name = "");
     void requestBosstiaryInfo();
@@ -452,7 +469,7 @@ public:
     void sendOpenRewardWall();
     void requestOpenRewardHistory();
     void requestGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items);
-    void sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, bool autoTrackNewQuests, bool autoUntrackCompletedQuests, uint8_t extra = 0x2A);
+    void sendRequestTrackerQuestLog(const std::map<uint16_t, std::string>& quests);
     void processCyclopediaCharacterOffenceStats(const CyclopediaCharacterOffenceStats& data);
     void processCyclopediaCharacterDefenceStats(const CyclopediaCharacterDefenceStats& data);
     void processCyclopediaCharacterMiscStats(const CyclopediaCharacterMiscStats& data);
@@ -461,6 +478,8 @@ public:
     void openWheel(uint32_t playerId);
     void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints,uint16_t greenGem,uint16_t redGem,uint16_t acquaGem,uint16_t purpleGem);
     void gemAction(uint8_t actionType, uint8_t param, uint8_t pos);
+    void openWheelOfDestiny(uint32_t playerId);
+    void applyWheelOfDestiny(const std::vector<uint16_t>& wheelPointsVec, const std::vector<uint16_t>& activeGemsVec);
 
     void updateMapLatency() {
         if (!m_mapUpdateTimer.first) {

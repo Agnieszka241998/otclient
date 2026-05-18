@@ -1,4 +1,249 @@
 function executeBot(config, storage, tabs, msgCallback, saveConfigCallback, reloadCallback, websockets)
+  local currentScript = "<bootstrap>"
+  local missingGlobalsByScript = {}
+  local lastMissingGlobalByScript = {}
+
+  local function reportDiagnostic(level, text)
+    local line = "[vBot debug] " .. tostring(text)
+    pcall(function()
+      msgCallback(level, line)
+    end)
+    pcall(function()
+      if level == "error" and g_logger.error then
+        g_logger.error(line)
+      elseif g_logger.warning then
+        g_logger.warning(line)
+      end
+    end)
+  end
+
+  local function buildTraceback(err)
+    err = tostring(err)
+    if debug and debug.traceback then
+      return debug.traceback(err, 2)
+    end
+    return err
+  end
+
+  local function noteMissingGlobal(name)
+    if type(name) ~= "string" then
+      return
+    end
+
+    local scriptName = currentScript or "<unknown>"
+    local scriptGlobals = missingGlobalsByScript[scriptName]
+    if not scriptGlobals then
+      scriptGlobals = {}
+      missingGlobalsByScript[scriptName] = scriptGlobals
+    end
+
+    if scriptGlobals[name] then
+      return
+    end
+
+    scriptGlobals[name] = true
+    lastMissingGlobalByScript[scriptName] = name
+    reportDiagnostic("warn", string.format("missing global '%s' while running %s", name, scriptName))
+  end
+
+  local function summarizeMissingGlobals(scriptName)
+    local scriptGlobals = missingGlobalsByScript[scriptName]
+    if not scriptGlobals then
+      return nil
+    end
+
+    local names = {}
+    for name in pairs(scriptGlobals) do
+      table.insert(names, name)
+    end
+
+    if #names == 0 then
+      return nil
+    end
+
+    table.sort(names)
+    return table.concat(names, ", ")
+  end
+
+  local function normalizeSourceName(source)
+    if type(source) ~= "string" then
+      return ""
+    end
+    local prefix = source:sub(1, 1)
+    if prefix == "@" or prefix == "=" then
+      return source:sub(2)
+    end
+    return source
+  end
+
+  local function shouldFailOnMissingGlobal(scriptName)
+    return type(scriptName) == "string" and scriptName:find("PvPScripts3", 1, true) ~= nil
+  end
+
+  local function createExecutionProbe(file)
+    local probe = {
+      file = file,
+      active = file:find("PvPScripts3", 1, true) ~= nil,
+      lastSource = nil,
+      lastLine = nil,
+      lastFunc = nil,
+      pcByFunc = {},
+      errorFrames = nil
+    }
+
+    if not probe.active or not debug or not debug.sethook or not debug.getinfo then
+      return probe
+    end
+
+    probe.hook = function()
+      local info = debug.getinfo(2, "Sfl")
+      if not info then
+        return
+      end
+
+      local source = normalizeSourceName(info.source)
+      if source ~= file then
+        return
+      end
+
+      probe.lastSource = source
+      probe.lastLine = info.currentline
+      probe.lastFunc = info.func
+      if info.func then
+        local count = (probe.pcByFunc[info.func] or 0) + 1
+        probe.pcByFunc[info.func] = count
+      end
+    end
+
+    probe.start = function()
+      debug.sethook(probe.hook, "", 1)
+    end
+
+    probe.stop = function()
+      debug.sethook()
+    end
+
+    return probe
+  end
+
+  local function captureErrorFrames()
+    local frames = {}
+    if not debug or not debug.getinfo then
+      return frames
+    end
+
+    for level = 2, 12 do
+      local info = debug.getinfo(level, "Slnf")
+      if not info then
+        break
+      end
+
+      table.insert(frames, {
+        level = level,
+        source = normalizeSourceName(info.source),
+        currentline = info.currentline,
+        name = info.name,
+        func = info.func
+      })
+    end
+
+    return frames
+  end
+
+  local function appendLuaJitProbeDump(lines, probe)
+    if not probe or not probe.active then
+      return
+    end
+
+    if probe.lastSource or probe.lastLine then
+      table.insert(lines, string.format("Last probe frame: %s:%s", tostring(probe.lastSource or probe.file), tostring(probe.lastLine)))
+    end
+
+    if not probe.lastFunc then
+      return
+    end
+
+    local okUtil, jitUtil = pcall(require, "jit.util")
+    local okVmdef, jitVmdef = pcall(require, "jit.vmdef")
+    if not okUtil or not okVmdef or type(jitUtil) ~= "table" or type(jitVmdef) ~= "table" then
+      table.insert(lines, "LuaJIT probe: jit.util/jit.vmdef unavailable")
+      return
+    end
+
+    local approxPc = probe.pcByFunc[probe.lastFunc]
+    if not approxPc then
+      table.insert(lines, "LuaJIT probe: no approximate PC captured")
+      return
+    end
+
+    table.insert(lines, string.format("Approx source frame: %s:%s", probe.lastSource or probe.file, tostring(probe.lastLine)))
+    table.insert(lines, string.format("Approx LuaJIT PC: %d", approxPc))
+
+    local bitlib = rawget(_G, "bit32") or rawget(_G, "bit")
+    if not bitlib or type(bitlib.band) ~= "function" then
+      return
+    end
+
+    local startPc = math.max(1, approxPc - 8)
+    local endPc = approxPc + 8
+    table.insert(lines, "Nearby bytecode:")
+    for pc = startPc, endPc do
+      local okBc, ins, mode = pcall(jitUtil.funcbc, probe.lastFunc, pc)
+      if okBc and ins then
+        local opcode = bitlib.band(ins, 0xff)
+        local nameOffset = opcode * 6 + 1
+        local opname = jitVmdef.bcnames:sub(nameOffset, nameOffset + 5):match("^%s*(.-)%s*$")
+        local marker = (pc == approxPc) and ">>" or "  "
+        table.insert(lines, string.format("%s pc=%d op=%s raw=0x%08X mode=%s", marker, pc, opname ~= "" and opname or "?", ins, tostring(mode)))
+      end
+    end
+  end
+
+  local function buildDetailedError(file, err, probe)
+    local lines = {
+      string.format("Bot script failure in %s", file),
+      tostring(err)
+    }
+
+    local missingSummary = summarizeMissingGlobals(file)
+    if missingSummary then
+      table.insert(lines, "Missing globals seen before failure: " .. missingSummary)
+    end
+    if lastMissingGlobalByScript[file] then
+      table.insert(lines, "Last missing global in script: " .. tostring(lastMissingGlobalByScript[file]))
+    end
+
+    if probe and probe.errorFrames and #probe.errorFrames > 0 then
+      table.insert(lines, "Lua stack snapshot:")
+      for _, frame in ipairs(probe.errorFrames) do
+        table.insert(lines, string.format("  [%d] %s:%s (%s)", frame.level, frame.source ~= "" and frame.source or "<unknown>", tostring(frame.currentline), tostring(frame.name or "?")))
+      end
+    end
+
+    appendLuaJitProbeDump(lines, probe)
+    return table.concat(lines, "\n")
+  end
+
+  local function normalizeBotScriptPath(file)
+    if type(file) ~= "string" then
+      error("script path must be a string")
+    end
+
+    if file:sub(1, 5) == "/bot/" then
+      return file
+    end
+
+    if file:sub(1, 6) == "/vBot/" then
+      return "/bot/" .. config .. file
+    end
+
+    if file:sub(1, 1) == "/" then
+      return "/bot/" .. config .. file
+    end
+
+    return "/bot/" .. config .. "/" .. file
+  end
+
   -- load lua and otui files
   local configFiles = g_resources.listDirectoryFiles("/bot/" .. config, true, false)
   local luaFiles = {}
@@ -21,7 +266,7 @@ function executeBot(config, storage, tabs, msgCallback, saveConfigCallback, relo
   local context = {}
   context.configDir = "/bot/".. config
   context.tabs = tabs
-  context.mainTab = context.tabs:addTab("Main", g_ui.createWidget('BotPanel')).tabPanel.content
+  context.mainTab = context.tabs:addTabGrid("Main", g_ui.createWidget('BotPanel'), nil,modules.game_bot.getBotTabs()).tabPanel.content
   context.panel = context.mainTab
   context.saveConfig = saveConfigCallback
   context.reload = reloadCallback
@@ -30,12 +275,14 @@ function executeBot(config, storage, tabs, msgCallback, saveConfigCallback, relo
   if context.storage._macros == nil then
     context.storage._macros = {} -- active macros
   end
+  context.UI = context.UI or {}
 
   -- websockets, macros, hotkeys, scheduler, icons, callbacks
   context._websockets = websockets
   context._macros = {}
   context._hotkeys = {}
   context._scheduler = {}
+  context._currentExecution = false
   context._callbacks = {
     onKeyDown = {},
     onKeyUp = {},
@@ -139,7 +386,8 @@ function executeBot(config, storage, tabs, msgCallback, saveConfigCallback, relo
     openUrl = g_platform.openUrl,
     openDir = g_platform.openDir,
   }
-
+  context.g_clock = g_clock
+	
   context.Item = Item
   context.Creature = Creature
   context.ThingType = ThingType
@@ -150,14 +398,112 @@ function executeBot(config, storage, tabs, msgCallback, saveConfigCallback, relo
   context.StaticText = StaticText
   context.HTTP = HTTP
   context.OutputMessage = OutputMessage
-  context.modules = modules
+  local function createModuleProxy(source)
+    local overrides = {}
+    return setmetatable({}, {
+      __index = function(_, key)
+        if overrides[key] ~= nil then
+          return overrides[key]
+        end
+        return source and source[key] or nil
+      end,
+      __newindex = function(_, key, value)
+        overrides[key] = value
+      end
+    })
+  end
+
+  context.modules = createModuleProxy(modules)
   context.Directions = Directions
+
+  local compatModules = context.modules
+  compatModules.client = createModuleProxy(modules.client or {})
+  compatModules.corelib = createModuleProxy(modules.corelib or {})
+  compatModules.game_interface = createModuleProxy(modules.game_interface or {})
+  compatModules.game_walking = createModuleProxy(modules.game_walking or modules.game_walk or {})
+  compatModules.game_console = createModuleProxy(modules.game_console or {})
+
+  compatModules.client.g_platform = compatModules.client.g_platform or g_platform
+
+  compatModules.corelib.G = compatModules.corelib.G or G
+  compatModules.corelib.g_http = compatModules.corelib.g_http or g_http
+  compatModules.corelib.g_clock = compatModules.corelib.g_clock or g_clock
+  compatModules.corelib.HTTP = compatModules.corelib.HTTP or HTTP
+  compatModules.corelib.retranslateKeyComboDesc = compatModules.corelib.retranslateKeyComboDesc or retranslateKeyComboDesc
+
+  if not compatModules.game_interface.gameMapPanel and compatModules.game_interface.getMapPanel then
+    compatModules.game_interface.gameMapPanel = compatModules.game_interface.getMapPanel()
+  end
 
   -- log functions
   context.info = function(text) return msgCallback("info", tostring(text)) end
   context.warn = function(text) return msgCallback("warn", tostring(text)) end
   context.error = function(text) return msgCallback("error", tostring(text)) end
   context.warning = context.warn
+
+  setmetatable(context, {
+    __index = function(_, key)
+      local value = rawget(_G, key)
+      if value ~= nil then
+        return value
+      end
+
+      noteMissingGlobal(key)
+      if shouldFailOnMissingGlobal(currentScript) then
+        error(string.format("Missing global '%s' while initializing %s", tostring(key), tostring(currentScript)), 2)
+      end
+      return nil
+    end
+  })
+
+  local function loadBotChunk(file)
+    file = normalizeBotScriptPath(file)
+    local contents = g_resources.readFileContents(file)
+    if _VERSION == "Lua 5.1" and type(jit) ~= "table" then
+      local func = assert(loadstring(contents))
+      setfenv(func, context)
+      return func
+    end
+
+    return assert(load(contents, file, nil, context))
+  end
+
+  local function executeBotChunk(file)
+    file = normalizeBotScriptPath(file)
+    local previousScript = currentScript
+    currentScript = file
+    local probe = createExecutionProbe(file)
+    local chunkFunc = loadBotChunk(file)
+
+    if probe.start then
+      probe.start()
+    end
+
+    local function errorHandler(err)
+      probe.errorFrames = captureErrorFrames()
+      return buildTraceback(err)
+    end
+
+    local ok, result = xpcall(function()
+      return chunkFunc()
+    end, errorHandler)
+
+    if probe.stop then
+      probe.stop()
+    end
+
+    currentScript = previousScript
+
+    if not ok then
+      error(buildDetailedError(file, result, probe))
+    end
+
+    return result
+  end
+
+  context.dofile = function(file)
+    return executeBotChunk(file)
+  end
 
   -- init context
   context.now = g_clock.millis()
@@ -178,13 +524,7 @@ function executeBot(config, storage, tabs, msgCallback, saveConfigCallback, relo
 
   -- run lua script
   for i, file in ipairs(luaFiles) do
-      if _VERSION == "Lua 5.1" and type(jit) ~= "table" then
-        local func = assert(loadstring(g_resources.readFileContents(file)))
-        setfenv(func, context)
-        func()
-      else
-        assert(load(g_resources.readFileContents(file), file, nil, context))()
-      end
+    executeBotChunk(file)
     context.panel = context.mainTab -- reset default tab
   end
 
