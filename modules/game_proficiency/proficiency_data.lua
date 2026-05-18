@@ -416,6 +416,14 @@ function ProficiencyData:getProficiencyIdForItem(displayItem, thingType, marketD
         return 6 -- Default fallback
     end
 
+    -- Prefer the original ThingType over the visual Item, which may use marketData.showAs.
+    if thingType and thingType.getProficiencyId then
+        local id = thingType:getProficiencyId()
+        if id and id > 0 and self:isValidProficiencyId(id) then
+            return id
+        end
+    end
+
     -- Try to get proficiencyId from item if method exists
     if displayItem and displayItem.getProficiencyId then
         local id = displayItem:getProficiencyId()
@@ -700,11 +708,11 @@ function ProficiencyData:getAugmentIconClip(perkData)
 end
 
 -- Get current ceil experience for next level
-function ProficiencyData:getCurrentCeilExperience(exp, displayItem, thingType)
+function ProficiencyData:getCurrentCeilExperience(exp, displayItem, thingType, marketData)
     local best = nil
-    local vocation = self:getWeaponProfessionType(displayItem, thingType)
+    local vocation = self:getWeaponProfessionType(displayItem, thingType, marketData)
     local lastExp = nil
-    local proficiencyId = self:getProficiencyIdForItem(displayItem, thingType)
+    local proficiencyId = self:getProficiencyIdForItem(displayItem, thingType, marketData)
     local limitIndex = self:getPerkLaneCount(proficiencyId) + 2
 
     for index, stage in ipairs(ExperienceTable) do
@@ -727,15 +735,15 @@ function ProficiencyData:getCurrentCeilExperience(exp, displayItem, thingType)
 end
 
 -- Get max experience for a proficiency
-function ProficiencyData:getMaxExperience(perkCount, displayItem, thingType)
-    local vocation = self:getWeaponProfessionType(displayItem, thingType)
+function ProficiencyData:getMaxExperience(perkCount, displayItem, thingType, marketData)
+    local vocation = self:getWeaponProfessionType(displayItem, thingType, marketData)
     local lastLevel = ExperienceTable[perkCount + 2]
     return (lastLevel and lastLevel[vocation]) or 0
 end
 
 -- Get level percent progress
-function ProficiencyData:getLevelPercent(currentExperience, level, displayItem, thingType)
-    local vocation = self:getWeaponProfessionType(displayItem, thingType)
+function ProficiencyData:getLevelPercent(currentExperience, level, displayItem, thingType, marketData)
+    local vocation = self:getWeaponProfessionType(displayItem, thingType, marketData)
     local prevLevel = math.max(level - 1, 0)
     local xpMin = prevLevel == 0 and 0 or (ExperienceTable[prevLevel] and ExperienceTable[prevLevel][vocation] or 0)
     local xpMax = (ExperienceTable[level] and ExperienceTable[level][vocation]) or xpMin + 1
@@ -752,22 +760,22 @@ function ProficiencyData:getLevelPercent(currentExperience, level, displayItem, 
 end
 
 -- Get total progress percent
-function ProficiencyData:getTotalPercent(currentExperience, perkCount, displayItem, thingType)
-    local vocation = self:getWeaponProfessionType(displayItem, thingType)
+function ProficiencyData:getTotalPercent(currentExperience, perkCount, displayItem, thingType, marketData)
+    local vocation = self:getWeaponProfessionType(displayItem, thingType, marketData)
     local maxExperience = (ExperienceTable[perkCount + 2] and ExperienceTable[perkCount + 2][vocation]) or 1
     local progress = math.max(0, math.min(1, currentExperience / maxExperience))
     return math.floor(progress * 100)
 end
 
 -- Get max experience by level
-function ProficiencyData:getMaxExperienceByLevel(level, displayItem, thingType)
-    local vocation = self:getWeaponProfessionType(displayItem, thingType)
+function ProficiencyData:getMaxExperienceByLevel(level, displayItem, thingType, marketData)
+    local vocation = self:getWeaponProfessionType(displayItem, thingType, marketData)
     return (ExperienceTable[level] and ExperienceTable[level][vocation]) or 0
 end
 
 -- Get current level by experience
-function ProficiencyData:getCurrentLevelByExp(displayItem, currentExperience, includeMastery, thingType)
-    local vocation = self:getWeaponProfessionType(displayItem, thingType)
+function ProficiencyData:getCurrentLevelByExp(displayItem, currentExperience, includeMastery, thingType, marketData)
+    local vocation = self:getWeaponProfessionType(displayItem, thingType, marketData)
     local currentLevel = 0
 
     for level, data in pairs(ExperienceTable) do
@@ -788,27 +796,40 @@ function ProficiencyData:getCurrentLevelByExp(displayItem, currentExperience, in
 end
 
 -- Determine weapon profession type based on vocation and weapon type
-function ProficiencyData:getWeaponProfessionType(displayItem, thingType)
-    if not displayItem and not thingType then
+function ProficiencyData:getWeaponProfessionType(displayItem, thingType, marketData)
+    if not displayItem and not thingType and not marketData then
         return "regular"
     end
 
-    local proficiencyId = self:getProficiencyIdForItem(displayItem, thingType)
+    marketData = marketData or (thingType and thingType.getMarketData and thingType:getMarketData()) or
+                     (displayItem and displayItem.getMarketData and displayItem:getMarketData()) or {}
+
+    local weaponType = 0
+    if thingType and thingType.getWeaponType then
+        weaponType = thingType:getWeaponType() or 0
+    elseif displayItem and displayItem.getWeaponType then
+        weaponType = displayItem:getWeaponType() or 0
+    end
+
+    local itemName = marketData.name
+    if (not itemName or itemName == "") and thingType and thingType.getMarketData then
+        local md = thingType:getMarketData()
+        itemName = md and md.name
+    end
+    if (not itemName or itemName == "") and displayItem and displayItem.getName then
+        itemName = displayItem:getName()
+    end
+
+    if weaponType == 9 or (itemName and string.find(string.lower(itemName), "crossbow", 1, true)) then
+        return "crossbow"
+    end
+
+    local proficiencyId = self:getProficiencyIdForItem(displayItem, thingType, marketData)
     if proficiencyId and proficiencyId > 0 then
         local profEntry = self:getContentById(proficiencyId)
         if profEntry and profEntry.Category then
             return profEntry.Category
         end
-    end
-
-    -- PRIORITY: Use thingType for market data (more reliable)
-    local marketData = nil
-    if thingType and thingType.getMarketData then
-        marketData = thingType:getMarketData() or {}
-    elseif displayItem and displayItem.getMarketData then
-        marketData = displayItem:getMarketData() or {}
-    else
-        marketData = {}
     end
 
     -- Check for knight vocation restriction
@@ -835,19 +856,6 @@ function ProficiencyData:getWeaponProfessionType(displayItem, thingType)
                 end
             end
         end
-    end
-
-    -- Check for crossbow weapon type (get from thingType first, then item)
-    local weaponType = 0
-    if thingType and thingType.getWeaponType then
-        weaponType = thingType:getWeaponType() or 0
-    elseif displayItem and displayItem.getWeaponType then
-        weaponType = displayItem:getWeaponType() or 0
-    end
-
-    -- WEAPON_CROSSBOW = 9 in Tibia
-    if weaponType == 9 then
-        return "crossbow"
     end
 
     return "regular"

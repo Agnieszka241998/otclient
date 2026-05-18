@@ -513,12 +513,6 @@ pdump(marketCategory) print("END----onWeaponProficiency---")
 end
 
 function onWeaponProficiencyExperience(itemId, experience, hasUnusedPerk)
-print("INIT----onWeaponProficiencyExperience---")
-    pdump(itemId)
-    pdump(experience)
-    pdump(hasUnusedPerk)
-print("END----onWeaponProficiencyExperience---")
-
     local itemCache = WeaponProficiency.cacheList[itemId]
     if not itemCache then
         WeaponProficiency.cacheList[itemId] = {
@@ -1077,7 +1071,7 @@ function WeaponProficiency:findMarketItem(itemId)
 end
 
 -- Check if mastery is achieved for an item
-function isMasteryAchieved(displayItem, cacheId, thingType)
+function isMasteryAchieved(displayItem, cacheId, thingType, marketData)
     if not displayItem then
         return false
     end
@@ -1088,9 +1082,9 @@ function isMasteryAchieved(displayItem, cacheId, thingType)
 
     -- Get proficiency data
     local tt = thingType or displayItem:getThingType()
-    local proficiencyId = ProficiencyData:getProficiencyIdForItem(displayItem, tt)
+    local proficiencyId = ProficiencyData:getProficiencyIdForItem(displayItem, tt, marketData)
     local perkCount = ProficiencyData:getPerkLaneCount(proficiencyId)
-    local maxExperience = ProficiencyData:getMaxExperience(perkCount, displayItem, tt)
+    local maxExperience = ProficiencyData:getMaxExperience(perkCount, displayItem, tt, marketData)
 
     return currentExperience >= maxExperience
 end
@@ -1150,8 +1144,9 @@ function WeaponProficiency:updateExperienceProgress(currentExp, displayItem)
     local marketData = self.selectedMarketItem and self.selectedMarketItem.marketData
     local proficiencyId = ProficiencyData:getProficiencyIdForItem(displayItem, thingType, marketData)
     local perkCount = ProficiencyData:getPerkLaneCount(proficiencyId)
-    local currentCeilExperience = ProficiencyData:getCurrentCeilExperience(currentExp, displayItem, thingType)
-    local maxExperience = ProficiencyData:getMaxExperience(perkCount, displayItem, thingType)
+    local currentCeilExperience = ProficiencyData:getCurrentCeilExperience(currentExp, displayItem, thingType,
+        marketData)
+    local maxExperience = ProficiencyData:getMaxExperience(perkCount, displayItem, thingType, marketData)
     local masteryAchieved = currentExp >= maxExperience
 
     experienceWidget:setText(string.format("%s / %s", comma_value(currentExp), comma_value(currentCeilExperience)))
@@ -1164,7 +1159,8 @@ function WeaponProficiency:updateExperienceProgress(currentExp, displayItem)
     end
 
     if totalProgressWidget then
-        totalProgressWidget:setPercent(ProficiencyData:getTotalPercent(currentExp, perkCount, displayItem, thingType))
+        totalProgressWidget:setPercent(ProficiencyData:getTotalPercent(currentExp, perkCount, displayItem, thingType,
+            marketData))
     end
 end
 
@@ -1307,11 +1303,12 @@ function WeaponProficiency:refreshItemList()
                 local cacheEntry = self.cacheList[cacheId]
                 local exp = cacheEntry and cacheEntry.exp or 0
                 local weaponLevel = ProficiencyData:getCurrentLevelByExp(marketItem.displayItem, exp, false,
-                    marketItem.thingType) or 0
+                    marketItem.thingType, marketItem.marketData) or 0
 
                 -- Create star widgets for each level achieved
                 if weaponLevel > 0 then
-                    local mastery = isMasteryAchieved(marketItem.displayItem, cacheId, marketItem.thingType)
+                    local mastery = isMasteryAchieved(marketItem.displayItem, cacheId, marketItem.thingType,
+                        marketItem.marketData)
                     for i = 1, weaponLevel do
                         local star = g_ui.createWidget("MiniStar", starPanel)
                         if star and mastery then
@@ -1491,8 +1488,8 @@ function WeaponProficiency:displayProficiencyData(itemId, experience, perks)
     end
 
     local levels = profEntry.Levels or {}
-    local currentLevel = ProficiencyData:getCurrentLevelByExp(displayItem, experience, false, thingType)
-    local maxExperience = ProficiencyData:getMaxExperience(#levels, displayItem, thingType)
+    local currentLevel = ProficiencyData:getCurrentLevelByExp(displayItem, experience, false, thingType, marketData)
+    local maxExperience = ProficiencyData:getMaxExperience(#levels, displayItem, thingType, marketData)
     local masteryAchieved = experience >= maxExperience
 
     -- Update perk columns for each level
@@ -1502,11 +1499,12 @@ function WeaponProficiency:displayProficiencyData(itemId, experience, perks)
 
         if perkColumn then
             self:updatePerkColumn(perkColumn, levelData, i, currentLevel, perks, experience, displayItem,
-                masteryAchieved, thingType)
+                masteryAchieved, thingType, marketData)
         end
 
         if starWidget then
-            self:updateStarWidget(starWidget, i, currentLevel, experience, displayItem, masteryAchieved, thingType)
+            self:updateStarWidget(starWidget, i, currentLevel, experience, displayItem, masteryAchieved, thingType,
+                marketData)
         end
     end
 
@@ -1514,7 +1512,7 @@ function WeaponProficiency:displayProficiencyData(itemId, experience, perks)
     self:updateBonusDetails(profEntry, perks)
 
     -- Update item frame
-    self:updateItemAddons(experience, displayItem, masteryAchieved, thingType)
+    self:updateItemAddons(experience, displayItem, masteryAchieved, thingType, marketData)
 end
 
 -- Display perks in the perk panel
@@ -1544,10 +1542,10 @@ function WeaponProficiency:displayPerks(itemId, perks, displayItem)
     local experience = self.cacheList[cacheId] and self.cacheList[cacheId].exp or 0
 
     -- Calculate current level based on experience (starts at 0 if no experience)
-    local currentLevel = ProficiencyData:getCurrentLevelByExp(displayItem, experience, false, thingType)
+    local currentLevel = ProficiencyData:getCurrentLevelByExp(displayItem, experience, false, thingType, marketData)
 
     -- Check if mastery is achieved
-    local maxExperience = ProficiencyData:getMaxExperience(#levels, displayItem, thingType)
+    local maxExperience = ProficiencyData:getMaxExperience(#levels, displayItem, thingType, marketData)
     local masteryAchieved = experience >= maxExperience
 
     -- Update perk columns for each level
@@ -1557,12 +1555,13 @@ function WeaponProficiency:displayPerks(itemId, perks, displayItem)
 
         if perkColumn and levelData then
             self:updatePerkColumn(perkColumn, levelData, i, currentLevel, perks, experience, displayItem,
-                masteryAchieved, thingType)
+                masteryAchieved, thingType, marketData)
         end
 
         -- Update star widget
         if starWidget then
-            self:updateStarWidget(starWidget, i, currentLevel, experience, displayItem, masteryAchieved, thingType)
+            self:updateStarWidget(starWidget, i, currentLevel, experience, displayItem, masteryAchieved, thingType,
+                marketData)
         end
     end
 
@@ -1570,12 +1569,12 @@ function WeaponProficiency:displayPerks(itemId, perks, displayItem)
     self:updateBonusDetails(proficiencyContent, perks)
 
     -- Update item frame/addons based on level
-    self:updateItemAddons(experience, displayItem, masteryAchieved)
+    self:updateItemAddons(experience, displayItem, masteryAchieved, thingType, marketData)
 end
 
 -- Update a single star widget - matching RTC implementation
 function WeaponProficiency:updateStarWidget(starWidget, levelIndex, currentLevel, experience, displayItem,
-    masteryAchieved, thingType)
+    masteryAchieved, thingType, marketData)
     if not starWidget then
         return
     end
@@ -1585,17 +1584,17 @@ function WeaponProficiency:updateStarWidget(starWidget, levelIndex, currentLevel
 
     if starProgress then
         -- Calculate percent for this level (same as perk column)
-        local percent = ProficiencyData:getLevelPercent(experience or 0, levelIndex, displayItem, thingType)
+        local percent = ProficiencyData:getLevelPercent(experience or 0, levelIndex, displayItem, thingType, marketData)
         starProgress:setPercent(percent)
 
         -- Set tooltip with experience info
-        local maxLevelExp = ProficiencyData:getMaxExperienceByLevel(levelIndex, displayItem, thingType)
+        local maxLevelExp = ProficiencyData:getMaxExperienceByLevel(levelIndex, displayItem, thingType, marketData)
         starProgress:setTooltip(string.format("%s / %s", comma_value(experience or 0), comma_value(maxLevelExp or 0)))
     end
 
     -- Update star icon color based on completion (100% = complete)
     if starIcon then
-        local percent = ProficiencyData:getLevelPercent(experience or 0, levelIndex, displayItem, thingType)
+        local percent = ProficiencyData:getLevelPercent(experience or 0, levelIndex, displayItem, thingType, marketData)
         if percent >= 100 then
             -- Level complete - show gold or silver star
             local iconType = masteryAchieved and "gold" or "silver"
@@ -1608,7 +1607,7 @@ function WeaponProficiency:updateStarWidget(starWidget, levelIndex, currentLevel
 end
 
 -- Update item frame/addons based on weapon level
-function WeaponProficiency:updateItemAddons(currentExp, displayItem, masteryAchieved, thingType)
+function WeaponProficiency:updateItemAddons(currentExp, displayItem, masteryAchieved, thingType, marketData)
     if not self.window then
         return
     end
@@ -1616,7 +1615,8 @@ function WeaponProficiency:updateItemAddons(currentExp, displayItem, masteryAchi
         return
     end
 
-    local weaponLevel = math.min(7, ProficiencyData:getCurrentLevelByExp(displayItem, currentExp, false, thingType) or 0)
+    local weaponLevel = math.min(7, ProficiencyData:getCurrentLevelByExp(displayItem, currentExp, false, thingType,
+        marketData) or 0)
     local iconLevelWidget = self.window:recursiveGetChildById("iconMasteryLevel")
     local weaponLevelWidget = self.window:recursiveGetChildById("itemMasteryLevel")
 
@@ -1636,7 +1636,7 @@ end
 
 -- Update a single perk column
 function WeaponProficiency:updatePerkColumn(perkColumn, levelData, levelIndex, currentLevel, selectedPerks, experience,
-    displayItem, masteryAchieved, thingType)
+    displayItem, masteryAchieved, thingType, marketData)
     if not perkColumn or not levelData then
         return
     end
@@ -1682,7 +1682,7 @@ function WeaponProficiency:updatePerkColumn(perkColumn, levelData, levelIndex, c
     -- Update progress bar for this column.
     local progressBar = perkColumn:getChildById('bonusSelectProgress')
     if progressBar then
-        local percent = ProficiencyData:getLevelPercent(experience or 0, levelIndex, displayItem, thingType)
+        local percent = ProficiencyData:getLevelPercent(experience or 0, levelIndex, displayItem, thingType, marketData)
         progressBar:setPercent(percent)
 
         -- Unlock perks if this level is complete (100%)
@@ -2398,4 +2398,29 @@ function WeaponProficiency:updateApplyButtonState()
     if resetBtn then
         resetBtn:setEnabled(hasAppliedPerks)
     end
+end
+
+function test()
+    onWeaponProficiency(43879, 1972517, { 
+    [1] = { 
+        [1] = 0,
+        [2] = 0
+    },
+    [2] = { 
+        [1] = 1,
+        [2] = 2
+    },
+    [3] = { 
+        [1] = 2,
+        [2] = 1
+    },
+    [4] = { 
+        [1] = 3,
+        [2] = 1
+    },
+    [5] = { 
+        [1] = 4,
+        [2] = 2
+    }
+}, 19)
 end
