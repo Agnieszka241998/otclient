@@ -304,6 +304,7 @@ ClientOpcodes = {
     ClientRequestHighscore                  = 177, -- 0xB1
     ClientSoulSealsAction                   = 186, -- 0xBA
     ClientWeaponProficiency                 = 179, -- 0xB3
+    ClientImbuementWindowAction             = 178, -- 0xB2
     ClientCancelAttackAndFollow             = 190, -- 0xBE
     ClientForgeEnter                        = 191, -- 0xBF
     ClientForgeBrowseHistory                = 192, -- 0xC0
