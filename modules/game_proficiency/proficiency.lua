@@ -437,6 +437,11 @@ end
 
 -- Called when server sends proficiency info (opcode 0xC4)
 function onWeaponProficiency(itemId, experience, perks, marketCategory)
+    print("INIT----onWeaponProficiency---")
+pdump(itemId)
+pdump(experience)
+pdump(perks)
+pdump(marketCategory) print("END----onWeaponProficiency---")
     -- Ensure perks is a table
     if type(perks) ~= "table" then
         perks = {}
@@ -508,7 +513,12 @@ function onWeaponProficiency(itemId, experience, perks, marketCategory)
 end
 
 function onWeaponProficiencyExperience(itemId, experience, hasUnusedPerk)
-    print("a")
+print("INIT----onWeaponProficiencyExperience---")
+    pdump(itemId)
+    pdump(experience)
+    pdump(hasUnusedPerk)
+print("END----onWeaponProficiencyExperience---")
+
     local itemCache = WeaponProficiency.cacheList[itemId]
     if not itemCache then
         WeaponProficiency.cacheList[itemId] = {
