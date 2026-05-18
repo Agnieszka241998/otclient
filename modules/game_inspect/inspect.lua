@@ -560,5 +560,5 @@ function InspectController:showWheel()
     if not s or not s.creatureId then
         return
     end
-    g_game.openWheelOfDestiny(s.creatureId)
+    g_game.openWheel(s.creatureId)
 end

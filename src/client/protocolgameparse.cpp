@@ -174,18 +174,11 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                 case Proto::GameServerTaskBoard:
                     parseTaskBoardData(msg);
                     break;
+                case Proto::GameServerWeaponProficiencyExperience:
+                    parseWeaponProficiencyExperience(msg);
+                    break;
                 case Proto::GameServerImbuementDurations:
                     parseImbuementDurations(msg);
-                    break;
-                case Proto::GameServerWeaponProficiencyExperience:
-                    // Weapon proficiency experience update (Summer Update 2025)
-                    // Structure: uint16 itemId, uint32 experience, uint8 hasUnusedPerk
-                    if (g_game.getClientVersion() >= 1510) {
-                        uint16_t itemId = msg->getU16();
-                        uint32_t experience = msg->getU32();
-                        uint8_t hasUnusedPerk = msg->getU8(); // 0x01 if has unused perk
-                        g_lua.callGlobalField("g_game", "onWeaponProficiencyExperience", itemId, experience, hasUnusedPerk != 0);
-                    }
                     break;
                 case Proto::GameServerPassiveCooldown:
                     parsePassiveCooldown(msg);
@@ -496,10 +489,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                     parseCyclopediaHouseAuctionMessage(msg);
                     break;
                 case Proto::GameServerWeaponProficiencyInfo:
-                    // Weapon proficiency info (Summer Update 2025)
-                    if (g_game.getClientVersion() >= 1510) {
-                        parseWeaponProficiencyInfo(msg);
-                    }
+                    parseWeaponProficiencyInfo(msg);
                     break;
                 case Proto::GameServerCyclopediaHousesInfo:
                     parseCyclopediaHousesInfo(msg);
@@ -7384,30 +7374,26 @@ void ProtocolGame::parseHighscores(const InputMessagePtr& msg)
     g_game.processHighscore(serverName, world, worldType, battlEye, vocations, categories, page, totalPages, highscores, entriesTs);
 }
 
+void ProtocolGame::parseWeaponProficiencyExperience(const InputMessagePtr& msg)
+{
+    const uint16_t itemId = msg->getU16();
+    const uint32_t experience = msg->getU32();
+    const uint8_t hasUnusedPerk = msg->getU8();
+    g_lua.callGlobalField("g_game", "onWeaponProficiencyExperience", itemId, experience, hasUnusedPerk != 0);
+}
+
 void ProtocolGame::parseWeaponProficiencyInfo(const InputMessagePtr& msg)
 {
-    // Opcode 0xC4 (196) - Weapon Proficiency Info
-    // Sent by server in response to sendWeaponProficiencyAction
-    // Structure: uint16 itemId, uint32 experience, uint8 perksCount, [perksCount * {uint8 level, uint8 perkPosition}]
-    
-    // Only parse for clients that support weapon proficiency (version 1510+)
-    if (g_game.getClientVersion() < 1510) {
-        return;
-    }
-    
     const uint16_t itemId = msg->getU16();
     const uint32_t experience = msg->getU32();
     const uint8_t perksCount = msg->getU8();
-    
-    std::vector<std::pair<uint8_t, uint8_t>> perks;
+    std::vector<std::vector<uint8_t>> perks;
     for (int i = 0; i < perksCount; ++i) {
         const uint8_t level = msg->getU8();
         const uint8_t perkPosition = msg->getU8();
-        perks.emplace_back(level, perkPosition);
+        perks.push_back({ level, perkPosition });
     }
-    
-    // Get market category for the item (for sorting in UI)
-    constexpr uint16_t MarketCategoryWeaponsAll = 32; // Default: WeaponsAll
+    constexpr uint16_t MarketCategoryWeaponsAll = 32;
     uint16_t marketCategory = MarketCategoryWeaponsAll;
     if (g_things.isValidDatId(itemId, ThingCategoryItem)) {
         const auto& itemType = g_things.getThingType(itemId, ThingCategoryItem);
@@ -7418,7 +7404,6 @@ void ProtocolGame::parseWeaponProficiencyInfo(const InputMessagePtr& msg)
             }
         }
     }
-    
     g_lua.callGlobalField("g_game", "onWeaponProficiency", itemId, experience, perks, marketCategory);
 }
 

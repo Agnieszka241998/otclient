@@ -2063,53 +2063,6 @@ void Game::imbuementDurations(const bool isOpen)
     m_protocolGame->sendImbuementDurations(isOpen);
 }
 
-void Game::sendWeaponProficiencyAction(const uint8_t actionType, const uint16_t itemId)
-{
-    if (!canPerformGameAction())
-        return;
-
-    m_protocolGame->sendWeaponProficiencyAction(actionType, itemId);
-}
-
-void Game::sendWeaponProficiencyApply(const uint16_t itemId, const std::vector<std::pair<uint8_t, uint8_t>>& perks)
-{
-    if (!canPerformGameAction())
-        return;
-
-    m_protocolGame->sendWeaponProficiencyApply(itemId, perks);
-}
-
-void Game::sendWeaponProficiencyApplyLua(const uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions)
-{
-    if (!canPerformGameAction())
-        return;
-
-    // Convert two parallel arrays to vector of pairs
-    std::vector<std::pair<uint8_t, uint8_t>> perks;
-    size_t count = std::min(levels.size(), perkPositions.size());
-    for (size_t i = 0; i < count; ++i) {
-        perks.emplace_back(levels[i], perkPositions[i]);
-    }
-    
-    m_protocolGame->sendWeaponProficiencyApply(itemId, perks);
-}
-
-void Game::openWheelOfDestiny(uint32_t playerId)
-{
-    if (!playerId || !canPerformGameAction())
-        return;
-
-    m_protocolGame->sendOpenWheelOfDestiny(playerId);
-}
-
-void Game::applyWheelOfDestiny(const std::vector<uint16_t>& wheelPointsVec, const std::vector<uint16_t>& activeGemsVec)
-{
-    if (!canPerformGameAction())
-        return;
-
-    m_protocolGame->sendApplyWheelOfDestiny(wheelPointsVec, activeGemsVec);
-}
-
 void Game::stashWithdraw(const uint16_t itemId, const uint32_t count, const uint8_t stackpos)
 {
     if (!canPerformGameAction())
@@ -2370,4 +2323,20 @@ void Game::sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints,uint16_t
     if (!canPerformGameAction())
         return;
     m_protocolGame->sendApplyWheelPoints(slotPoints, greenGem, redGem, acquaGem, purpleGem);
+}
+
+void Game::sendWeaponProficiencyAction(const uint8_t actionType, const uint16_t itemId)
+{
+    if (!canPerformGameAction())
+        return;
+
+    m_protocolGame->sendWeaponProficiencyAction(actionType, itemId);
+}
+
+void Game::sendWeaponProficiencyApply(const uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions)
+{
+    if (!canPerformGameAction())
+        return;
+
+    m_protocolGame->sendWeaponProficiencyApply(itemId, levels, perkPositions);
 }

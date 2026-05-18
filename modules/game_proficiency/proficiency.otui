@@ -1,7 +1,7 @@
 MiniStar < UIWidget
   id: miniStar
   size: 5 5
-  image-source: /images/game/proficiency/icon-star-tiny-silver
+  image-source: /modules/game_proficiency/images/icon-star-tiny-silver
   image-clip: 0 0 5 5
 
 ItemBox < UIButton
@@ -45,13 +45,13 @@ ItemBox < UIButton
 StarWidget < UIWidget
   id: starWidget
   size: 108 20
-  image-source: /images/game/proficiency/star-progress-bg
+  image-source: /modules/game_proficiency/images/star-progress-bg
   tooltip-delayed: true
 
-  ProgressBar
+  ProgressBarSD
     id: starProgress
     anchors.fill: parent
-    image-source: /images/game/proficiency/star-progress
+    image-source: /modules/game_proficiency/images/star-progress
     margin: 1 1 1 1
     percent: 0
 
@@ -61,7 +61,7 @@ StarWidget < UIWidget
     phantom: true
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /images/game/proficiency/icon-star-dark
+    image-source: /modules/game_proficiency/images/icon-star-dark
 
 BonusIcon < UIWidget
   id: bonusIcon
@@ -72,7 +72,7 @@ BonusIcon < UIWidget
     id: highlight
     visible: false
     phantom: true
-    image-source: /images/game/proficiency/backdrop_weaponmastery_highlight
+    image-source: /modules/game_proficiency/images/backdrop_weaponmastery_highlight
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
 
@@ -82,14 +82,14 @@ BonusIcon < UIWidget
     phantom: true
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /images/game/proficiency/border-weaponmasterytreeicons-inactive
+    image-source: /modules/game_proficiency/images/border-weaponmasterytreeicons-inactive
 
   UIWidget
     id: icon
     size: 64 64
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /images/game/proficiency/icons-0
+    image-source: /modules/game_proficiency/images/icons-0
     image-clip: 0 0 64 64
     phantom: true
 
@@ -98,7 +98,7 @@ BonusIcon < UIWidget
     size: 64 64
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /images/game/proficiency/icons-0
+    image-source: /modules/game_proficiency/images/icons-0
     image-clip: 0 64 64 64
     phantom: true
 
@@ -111,7 +111,7 @@ BonusIcon < UIWidget
     margin-right: -16
     visible: false
     phantom: true
-    image-source: /images/game/proficiency/augment-icons
+    image-source: /modules/game_proficiency/images/augment-icons
     image-clip: 0 0 32 32
 
   UIWidget
@@ -123,7 +123,7 @@ BonusIcon < UIWidget
     margin-right: -16
     visible: false
     phantom: true
-    image-source: /images/game/proficiency/augment-icons
+    image-source: /modules/game_proficiency/images/augment-icons
     image-clip: 0 32 32 32
 
   UIWidget
@@ -133,22 +133,19 @@ BonusIcon < UIWidget
     anchors.horizontalCenter: parent.horizontalCenter
     margin-bottom: -8
     visible: false
-    image-source: /images/game/proficiency/big-icon-lock-grey
+    image-source: /modules/game_proficiency/images/big-icon-lock-grey
 
 BonusSelectPanel < UIWidget
   id: bonusSelectPanel
   size: 108 354
-  image-source: /images/game/proficiency/bonus-select-bg
+  image-source: /modules/game_proficiency/images/bonus-select-bg
 
-  UIWidget
+  ProgressBarSD
     id: bonusSelectProgress
-    anchors.top: parent.top
-    anchors.left: parent.left
-    anchors.bottom: parent.bottom
-    width: 0
-    image-source: /images/game/proficiency/bonus-select-bg-progress
-    image-border: 1
+    anchors.fill: parent
+    image-source: /modules/game_proficiency/images/bonus-select-bg-progress
     margin: 1 1 1 1
+    percent: 0
 
   Panel
     id: oneBonusIconPanel
@@ -217,7 +214,7 @@ BonusDetailPanel < UIWidget
     text-align: center
     text-wrap: true
     tooltip-delayed: true
-    image-source: /images/game/proficiency/icon-lock-grey
+    image-source: /modules/game_proficiency/images/icon-lock-grey
     image-rect: 0 0 9 14
     image-offset: 45 30
 
@@ -225,7 +222,7 @@ MainWindow
   id: weaponProficiencyWindow
   !text: tr('Weapon Proficiency')
   size: 1000 572
-  @onEscape: modules.game_proficiency.hide()
+  @onEscape: modules.game_proficiency.WeaponProficiency:onCloseWindow()
 
   Panel
     id: contentPanel
@@ -260,7 +257,7 @@ MainWindow
           anchors.horizontalCenter: parent.horizontalCenter
           margin-top: 22
           margin-left: 1
-          image-source: /images/game/proficiency/icon-masterylevel-0
+          image-source: /modules/game_proficiency/images/icon-masterylevel-0
 
 
         UIWidget
@@ -270,7 +267,7 @@ MainWindow
           anchors.horizontalCenter: parent.horizontalCenter
           margin-top: 22
           margin-left: 1
-          image-source: /images/game/proficiency/icon-masterylevel-1-silver
+          image-source: /modules/game_proficiency/images/icon-masterylevel-1-silver
           phantom: true
           visible: false
 
@@ -410,11 +407,6 @@ MainWindow
           cell-spacing: 3
           num-columns: 5
 
-        @onSetup: |
-          for i = 0, 44 do
-            g_ui.createWidget("ItemBox", self, "widget_" .. i)
-          end
-
       VerticalScrollBar
         id: itemListScroll
         anchors.top: prev.top
@@ -432,7 +424,7 @@ MainWindow
         anchors.top: parent.top
         anchors.left: itemPanel.right
         margin-left: 11
-        image-source: /images/game/proficiency/star-progress-bg
+        image-source: /modules/game_proficiency/images/star-progress-bg
         image-border: 1
         layout:
           type: grid
@@ -446,12 +438,12 @@ MainWindow
         anchors.top: prev.bottom
         anchors.left: prev.left
         margin-top: 2
-        image-source: /images/game/proficiency/progress-bg
+        image-source: /modules/game_proficiency/images/progress-bg
 
-        ProgressBar
+        ProgressBarSD
           id: proficiencyProgress
           anchors.fill: parent
-          image-source: /images/game/proficiency/proficiency-progress
+          image-source: /modules/game_proficiency/images/proficiency-progress
           margin: 1 1 1 1
           percent: 0
 
@@ -461,7 +453,7 @@ MainWindow
         anchors.top: prev.bottom
         anchors.left: prev.left
         margin-top: 3
-        image-source: /images/game/proficiency/full-bonus-select-bg
+        image-source: /modules/game_proficiency/images/full-bonus-select-bg
         layout:
           type: grid
           cell-size: 108 354
@@ -511,7 +503,7 @@ MainWindow
     size: 60 20
     margin-bottom: 12
     margin-right: 12
-    @onClick: modules.game_proficiency.hide()
+    @onClick: modules.game_proficiency.WeaponProficiency:onCloseWindow()
 
   Button
     id: reset
@@ -548,5 +540,3 @@ MainWindow
     tooltip-delayed: true
     enabled: false
     @onClick: modules.game_proficiency.WeaponProficiency:onOkClick()
-
-

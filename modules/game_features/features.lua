@@ -269,6 +269,9 @@ controller:registerEvents(g_game, {
         if version >= 1500 then
             g_game.enableFeature(GameVocationMonk)
         end
+                if version >= 1510 then
+            g_game.enableFeature(GameProficiency)
+        end
         if version >= 1513 then
             g_game.enableFeature(GameNpcWindowRedesign)
         end
@@ -278,5 +281,6 @@ controller:registerEvents(g_game, {
         if version >= 1520 then
             g_game.enableFeature(GameLevelPercentU16)
         end
+
     end
 })

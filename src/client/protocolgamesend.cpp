@@ -1709,35 +1709,6 @@ void ProtocolGame::sendImbuementDurations(const bool isOpen)
     send(msg);
 }
 
-void ProtocolGame::sendOpenWheelOfDestiny(uint32_t playerId)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenWheel);
-    msg->addU32(playerId);
-    g_logger.info("Sending Wheel of Destiny request for player ID {}", playerId);
-    send(msg);
-}
-
-void ProtocolGame::sendApplyWheelOfDestiny(const std::vector<uint16_t>& wheelPointsVec, const std::vector<uint16_t>& activeGemsVec)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSaveWheel);
-    for (const uint16_t points : wheelPointsVec) {
-        msg->addU16(points);
-    }
-
-    for (const uint16_t gem : activeGemsVec) {
-        if (gem > 0) {
-            msg->addU8(1);
-            msg->addU16(gem);
-
-        } else {
-            msg->addU8(0);
-        }
-    }
-
-    send(msg);
-}
 
 void ProtocolGame::sendQuickLoot(const uint8_t variant, const Position& pos, const uint16_t itemId, const uint8_t stackpos)
 {
@@ -1788,31 +1759,26 @@ void ProtocolGame::openContainerQuickLoot(const uint8_t action, const uint8_t ca
 
 void ProtocolGame::sendWeaponProficiencyAction(const uint8_t actionType, const uint16_t itemId)
 {
-    // Opcode 0xB3 (179) - Weapon Proficiency Action
-    // actionType: 0 = request item info, 1 = request all items, 2 = reset perks, 3 = apply perks
     const auto msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientWeaponProficiency);
     msg->addU8(actionType);
-    if (actionType == 0 || actionType == 2) {
+    if (actionType == Otc::WEAPON_PROFICIENCY_ITEM_INFO || actionType == Otc::WEAPON_PROFICIENCY_RESET_PERKS) {
         msg->addU16(itemId);
     }
     send(msg);
 }
 
-void ProtocolGame::sendWeaponProficiencyApply(const uint16_t itemId, const std::vector<std::pair<uint8_t, uint8_t>>& perks)
+void ProtocolGame::sendWeaponProficiencyApply(const uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions)
 {
-    // Opcode 0xB3 (179) - Weapon Proficiency Apply Perks
-    // Structure: byte actionType (3), uint16 itemId, uint8 perksCount, [perksCount * {uint8 level, uint8 perkPosition}]
     const auto msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientWeaponProficiency);
-    msg->addU8(3); // WEAPON_PROFICIENCY_APPLY_PERKS
+    msg->addU8(Otc::WEAPON_PROFICIENCY_APPLY_PERKS);
     msg->addU16(itemId);
-    msg->addU8(static_cast<uint8_t>(perks.size()));
-    for (const auto& perk : perks) {
-        // Server expects 0-indexed values and adds +1 internally
-        // Lua sends 0-indexed values, so we pass them directly
-        msg->addU8(perk.first);   // level (0-indexed)
-        msg->addU8(perk.second);  // perkPosition (0-indexed)
+    const size_t count = std::min(levels.size(), perkPositions.size());
+    msg->addU8(static_cast<uint8_t>(count));
+    for (size_t i = 0; i < count; ++i) {
+        msg->addU8(levels[i]);
+        msg->addU8(perkPositions[i]);
     }
     send(msg);
 }

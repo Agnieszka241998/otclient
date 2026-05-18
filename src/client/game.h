@@ -421,8 +421,7 @@ public:
 
     // weapon proficiency related
     void sendWeaponProficiencyAction(uint8_t actionType, uint16_t itemId = 0);
-    void sendWeaponProficiencyApply(uint16_t itemId, const std::vector<std::pair<uint8_t, uint8_t>>& perks);
-    void sendWeaponProficiencyApplyLua(uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions);
+    void sendWeaponProficiencyApply(uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions);
 
     void selectImbuementItem(uint16_t itemId, const Position& pos, uint8_t stackpos);
     void selectImbuementScroll();

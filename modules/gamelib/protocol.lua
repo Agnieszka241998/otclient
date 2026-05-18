@@ -266,6 +266,7 @@ ClientOpcodes = {
     ClientBosstiaryRequestSlotInfo          = 175, -- 0xAF
     ClientBosstiaryRequestSlotAction        = 176, -- 0xB0
     ClientRequestHighscore                  = 177, -- 0xB1
+    ClientWeaponProficiency                 = 179, -- 0xB3
     ClientCancelAttackAndFollow             = 190, -- 0xBE
     ClientForgeEnter                        = 191, -- 0xBF
     ClientForgeBrowseHistory                = 192, -- 0xC0
