@@ -1700,35 +1700,6 @@ void ProtocolGame::sendImbuementDurations(const bool isOpen)
     send(msg);
 }
 
-void ProtocolGame::sendOpenWheelOfDestiny(uint32_t playerId)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenWheel);
-    msg->addU32(playerId);
-    g_logger.info("Sending Wheel of Destiny request for player ID {}", playerId);
-    send(msg);
-}
-
-void ProtocolGame::sendApplyWheelOfDestiny(const std::vector<uint16_t>& wheelPointsVec, const std::vector<uint16_t>& activeGemsVec)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSaveWheel);
-    for (const uint16_t points : wheelPointsVec) {
-        msg->addU16(points);
-    }
-
-    for (const uint16_t gem : activeGemsVec) {
-        if (gem > 0) {
-            msg->addU8(1);
-            msg->addU16(gem);
-
-        } else {
-            msg->addU8(0);
-        }
-    }
-
-    send(msg);
-}
 
 void ProtocolGame::sendQuickLoot(const uint8_t variant, const Position& pos, const uint16_t itemId, const uint8_t stackpos)
 {
@@ -1776,6 +1747,33 @@ void ProtocolGame::openContainerQuickLoot(const uint8_t action, const uint8_t ca
     }
     send(msg);
 }
+
+void ProtocolGame::sendWeaponProficiencyAction(const uint8_t actionType, const uint16_t itemId)
+{
+    const auto msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientWeaponProficiency);
+    msg->addU8(actionType);
+    if (actionType == Otc::WEAPON_PROFICIENCY_ITEM_INFO || actionType == Otc::WEAPON_PROFICIENCY_RESET_PERKS) {
+        msg->addU16(itemId);
+    }
+    send(msg);
+}
+
+void ProtocolGame::sendWeaponProficiencyApply(const uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions)
+{
+    const auto msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientWeaponProficiency);
+    msg->addU8(Otc::WEAPON_PROFICIENCY_APPLY_PERKS);
+    msg->addU16(itemId);
+    const size_t count = std::min(levels.size(), perkPositions.size());
+    msg->addU8(static_cast<uint8_t>(count));
+    for (size_t i = 0; i < count; ++i) {
+        msg->addU8(levels[i]);
+        msg->addU8(perkPositions[i]);
+    }
+    send(msg);
+}
+
 void ProtocolGame::sendOpenWheel(uint32_t playerId) {  
     const auto& msg = std::make_shared<OutputMessage>();  
     msg->addU8(Proto::ClientOpenWheel); // 0x61  

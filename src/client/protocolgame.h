@@ -156,11 +156,11 @@ public:
     void sendHighscoreInfo(uint8_t action, uint8_t category, uint32_t vocation, std::string_view world, uint8_t worldType, uint8_t battlEye, uint16_t page, uint8_t totalPages);
     void sendTaskBoardAction(const uint8_t option, const uint16_t value = 0, const uint16_t extraValue = 0);
     void sendImbuementDurations(bool isOpen = false);
-    void sendOpenWheelOfDestiny(uint32_t playerId);
-    void sendApplyWheelOfDestiny(const std::vector<uint16_t>& wheelPointsVec, const std::vector<uint16_t>& activeGemsVec);
     void sendStartOfflineTraining(const uint8_t skillType);
     void sendTutorialChangeVocation(uint8_t vocationClientId);
     void sendSoulSealsAction(const uint16_t raceId);
+    
+    // Cyclopedia
     void sendRequestBestiary();
     void sendRequestBestiaryOverview(std::string_view catName, bool search = false, std::vector<uint16_t> raceIds = {});
     void sendRequestBestiarySearch(uint16_t raceId);
@@ -171,9 +171,13 @@ public:
     void sendRequestBossSlootInfo();
     void sendRequestBossSlotAction(uint8_t action, uint32_t raceId);
     void sendStatusTrackerBestiary(uint16_t raceId, bool status);
+
+    // Quick Loot
     void sendQuickLoot(const uint8_t variant, const Position& pos, const uint16_t itemId, const uint8_t stackpos);
     void requestQuickLootBlackWhiteList(uint8_t filter, uint16_t size, const std::vector<uint16_t>& listedItems);
     void openContainerQuickLoot(uint8_t action, uint8_t category, const Position& pos, uint16_t itemId, uint8_t stackpos, bool useMainAsFallback);
+
+    // inspection item / character
     void sendInspectionNormalObject(const Position& position);
     void sendInspectionObject(Otc::InspectObjectTypes inspectionType, uint16_t itemId, uint8_t itemCount);
     void sendInspectCharacter(uint32_t creatureId, uint8_t tab);
@@ -183,6 +187,10 @@ public:
     void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints,uint16_t greenGem,uint16_t redGem,uint16_t acquaGem,uint16_t purpleGem);
     void sendWheelGemAction(const uint8_t actionType, const uint8_t param, const uint8_t pos);
 
+    // Weapon Proficiency
+    void sendWeaponProficiencyAction(uint8_t actionType, uint16_t itemId = 0);
+    void sendWeaponProficiencyApply(uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions);
+    
     // otclient only
     void sendChangeMapAwareRange(uint8_t xrange, uint8_t yrange);
 
